@@ -1,39 +1,37 @@
-## SSD: Single-Shot MultiBox Detector implementation in Keras
+## SSD: Single-Shot MultiBox Detector trien khai trong Keras
 ---
-### Contents
+### Noi dung
 
-1. [Overview](#overview)
-2. [Performance](#performance)
-3. [Examples](#examples)
-4. [Dependencies](#dependencies)
-5. [How to use it](#how-to-use-it)
-6. [Download the convolutionalized VGG-16 weights](#download-the-convolutionalized-vgg-16-weights)
-7. [Download the original trained model weights](#download-the-original-trained-model-weights)
-8. [How to fine-tune one of the trained models on your own dataset](#how-to-fine-tune-one-of-the-trained-models-on-your-own-dataset)
-9. [ToDo](#todo)
-10. [Important notes](#important-notes)
-11. [Terminology](#terminology)
+1. [Tong quan](#overview)
+2. [Hieu suat](#performance)
+3. [Vi du](#examples)
+4. [Cac phu thuoc](#dependencies)
+5. [Lan the nao de su dung no](#how-to-use-it)
+6. [Tai ve trong so cua mang tich chap VGG16](#download-the-convolutionalized-vgg-16-weights)
+7. [Tai ve trong so da dao tao cua model duoc dao tao ban dau](#download-the-original-trained-model-weights)
+8. [Cach tinh chinh mot model da duoc dao tao tren bo du lieu cua chinh ban](#how-to-fine-tune-one-of-the-trained-models-on-your-own-dataset)
+9. [Cach lam](#todo)
+10. [Cac ghi chu quan trong](#important-notes)
+11. [Thuat ngu](#terminology)
 
 ### Overview
 
-This is a Keras port of the SSD model architecture introduced by Wei Liu et al. in the paper [SSD: Single Shot MultiBox Detector](https://arxiv.org/abs/1512.02325).
+Đây là một cổng Keras của kiến truc mô hình SSD được giới thiệu bởi Wei Liu và cộng sự. trong bài báo [SSD: Single Shot MultiBox Detector](https://arxiv.org/abs/1512.02325).
 
-Ports of the trained weights of all the original models are provided below. This implementation is accurate, meaning that both the ported weights and models trained from scratch produce the same mAP values as the respective models of the original Caffe implementation (see performance section below).
+Mục tiêu chính của dự án này là tạo ra một triển khai SSD được ghi lại tốt cho những ai quan tâm đến sự hiểu biết ở mức độ thấp về mô hình. Các hướng dẫn, tài liệu và nhận xét chi tiết được cung cấp hy vọng sẽ giúp việc đào sâu vào mã dễ dàng hơn và điều chỉnh hoặc xây dựng theo mô hình so với hầu hết các triển khai khác ngoài đó (Keras hoặc cách khác) cung cấp rất ít tài liệu và nhận xét.
 
-The main goal of this project is to create an SSD implementation that is well documented for those who are interested in a low-level understanding of the model. The provided tutorials, documentation and detailed comments hopefully make it a bit easier to dig into the code and adapt or build upon the model than with most other implementations out there (Keras or otherwise) that provide little to no documentation and comments.
-
-The repository currently provides the following network architectures:
+Kho lưu trữ hiện cung cấp các kiến trúc mạng sau:
 * SSD300: [`keras_ssd300.py`](models/keras_ssd300.py)
 * SSD512: [`keras_ssd512.py`](models/keras_ssd512.py)
-* SSD7: [`keras_ssd7.py`](models/keras_ssd7.py) - a smaller 7-layer version that can be trained from scratch relatively quickly even on a mid-tier GPU, yet is capable enough for less complex object detection tasks and testing. You're obviously not going to get state-of-the-art results with that one, but it's fast.
+* SSD7: [`keras_ssd7.py`](models/keras_ssd7.py) - một phiên bản 7 lớp nhỏ hơn có thể được huấn luyện từ đầu tương đối nhanh ngay cả trên GPU trung cấp, nhưng vẫn đủ khả năng cho các nhiệm vụ và thử nghiệm phát hiện đối tượng ít phức tạp hơn. Rõ ràng là bạn sẽ không nhận được kết quả hiện đại với kết quả đó, nhưng nó rất nhanh.
 
-If you would like to use one of the provided trained models for transfer learning (i.e. fine-tune one of the trained models on your own dataset), there is a [Jupyter notebook tutorial](weight_sampling_tutorial.ipynb) that helps you sub-sample the trained weights so that they are compatible with your dataset, see further below.
+Nếu bạn muốn sử dụng một trong những mô hình được đào tạo được cung cấp để học chuyển giao (nghĩa là tinh chỉnh một trong những mô hình được đào tạo trên tập dữ liệu của riêng bạn), có một [hướng dẫn sổ ghi chép Jupyter](weight_sampling_tutorial.ipynb) giúp bạn lấy mẫu phụ các trọng số được đào tạo để chúng tương thích với tập dữ liệu của bạn, xem thêm bên dưới.
 
-If you would like to build an SSD with your own base network architecture, you can use [`keras_ssd7.py`](models/keras_ssd7.py) as a template, it provides documentation and comments to help you.
+Nếu bạn muốn xây dựng một ổ SSD với kiến trúc mạng cơ sở của riêng mình, bạn có thể sử dụng [`keras_ssd7.py`](model/keras_ssd7.py) làm mẫu, nó cung cấp tài liệu và nhận xét để giúp bạn.
 
 ### Performance
 
-Here are the mAP evaluation results of the ported weights and below that the evaluation results of a model trained from scratch using this implementation. All models were evaluated using the official Pascal VOC test server (for 2012 `test`) or the official Pascal VOC Matlab evaluation script (for 2007 `test`). In all cases the results match (or slightly surpass) those of the original Caffe models. Download links to all ported weights are available further below.
+Dưới đây là kết quả đánh giá mAP của các trọng số được chuyển và dưới đây là kết quả đánh giá của một mô hình được đào tạo từ đầu bằng cách sử dụng triển khai này. Tất cả các mô hình được đánh giá bằng máy chủ thử nghiệm Pascal VOC chính thức (cho năm 2012 `test`) hoặc tập lệnh đánh giá Pascal VOC Matlab chính thức (cho năm 2007` test`). Trong mọi trường hợp, kết quả khớp (hoặc vượt một chút) so với các mô hình Caffe ban đầu. Tải về các liên kết đến tất cả các trọng lượng được chuyển có sẵn dưới đây.
 
 <table width="70%">
   <tr>
@@ -65,7 +63,7 @@ Here are the mAP evaluation results of the ported weights and below that the eva
   </tr>
 </table>
 
-Training an SSD300 from scratch to convergence on Pascal VOC 2007 `trainval` and 2012 `trainval` produces the same mAP on Pascal VOC 2007 `test` as the original Caffe SSD300 "07+12" model. You can find a summary of the training [here](training_summaries/ssd300_pascal_07+12_training_summary.md).
+Đào tạo một SSD300 từ đầu để hội tụ trên Pascal VOC 2007 `trainval` và 2012` trainval` tạo ra cùng một mAP trên Pascal VOC 2007` test` như mô hình Caffe SSD300 "07 + 12" ban đầu. Bạn có thể tìm thấy một bản tóm tắt của đào tạo [here](training_summaries/ssd300_pascal_07+12_training_summary.md).
 
 <table width="95%">
   <tr>
@@ -86,7 +84,7 @@ Training an SSD300 from scratch to convergence on Pascal VOC 2007 `trainval` and
   </tr>
 </table>
 
-The models achieve the following average number of frames per second (FPS) on Pascal VOC on an NVIDIA GeForce GTX 1070 mobile (i.e. the laptop version) and cuDNN v6. There are two things to note here. First, note that the benchmark prediction speeds of the original Caffe implementation were achieved using a TitanX GPU and cuDNN v4. Second, the paper says they measured the prediction speed at batch size 8, which I think isn't a meaningful way of measuring the speed. The whole point of measuring the speed of a detection model is to know how many individual sequential images the model can process per second, therefore measuring the prediction speed on batches of images and then deducing the time spent on each individual image in the batch defeats the purpose. For the sake of comparability, below you find the prediction speed for the original Caffe SSD implementation and the prediction speed for this implementation under the same conditions, i.e. at batch size 8. In addition you find the prediction speed for this implementation at batch size 1, which in my opinion is the more meaningful number.
+Các mô hình đạt được số khung hình trung bình mỗi giây (FPS) trên Pascal VOC trên điện thoại di động NVIDIA GeForce GTX 1070 (tức là phiên bản máy tính xách tay) và cuDNN v6. Có hai điều cần lưu ý ở đây. Đầu tiên, lưu ý rằng tốc độ dự đoán điểm chuẩn của việc triển khai Caffe ban đầu đã đạt được bằng cách sử dụng GPU TitanX và cuDNN v4. Thứ hai, bài báo nói rằng họ đã đo tốc độ dự đoán ở cỡ 8, mà tôi nghĩ không phải là cách đo tốc độ có ý nghĩa. Toàn bộ điểm đo tốc độ của một mô hình phát hiện là để biết có bao nhiêu hình ảnh liên tiếp riêng lẻ mà mô hình có thể xử lý mỗi giây, do đó đo tốc độ dự đoán trên các lô hình ảnh và sau đó suy ra thời gian dành cho mỗi hình ảnh riêng lẻ trong lô đó mục đích. Để dễ so sánh, bên dưới bạn tìm thấy tốc độ dự đoán cho việc triển khai Caffe SSD ban đầu và tốc độ dự đoán cho việc triển khai này trong cùng điều kiện, tức là ở cỡ lô 8. Ngoài ra, bạn tìm thấy tốc độ dự đoán cho việc triển khai này ở kích thước lô 1 , mà theo tôi là con số có ý nghĩa hơn.
 
 <table width>
   <tr>
@@ -126,14 +124,14 @@ The models achieve the following average number of frames per second (FPS) on Pa
 
 ### Examples
 
-Below are some prediction examples of the fully trained original SSD300 "07+12" model (i.e. trained on Pascal VOC2007 `trainval` and VOC2012 `trainval`). The predictions were made on Pascal VOC2007 `test`.
+Dưới đây là một số ví dụ dự đoán về mẫu SSD300 "07 + 12" được đào tạo đầy đủ (tức là được đào tạo trên Pascal VOC2007 `trainval` và VOC2012` trainval`). Các dự đoán đã được thực hiện trên Pascal VOC2007 `test`.
 
 | | |
 |---|---|
 | ![img01](./examples/trained_ssd300_pascalVOC2007_test_pred_05_no_gt.png) | ![img01](./examples/trained_ssd300_pascalVOC2007_test_pred_04_no_gt.png) |
 | ![img01](./examples/trained_ssd300_pascalVOC2007_test_pred_01_no_gt.png) | ![img01](./examples/trained_ssd300_pascalVOC2007_test_pred_02_no_gt.png) |
 
-Here are some prediction examples of an SSD7 (i.e. the small 7-layer version) partially trained on two road traffic datasets released by [Udacity](https://github.com/udacity/self-driving-car/tree/master/annotations) with roughly 20,000 images in total and 5 object categories (more info in [`ssd7_training.ipynb`](ssd7_training.ipynb)). The predictions you see below were made after 10,000 training steps at batch size 32. Admittedly, cars are comparatively easy objects to detect and I picked a few of the better examples, but it is nonetheless remarkable what such a small model can do after only 10,000 training iterations.
+Dưới đây là một số ví dụ dự đoán về SSD7 (tức là phiên bản 7 lớp nhỏ) được đào tạo một phần về hai bộ dữ liệu giao thông đường bộ do [Udacity](https://github.com/udacity/self-driving-car/tree/master/annotations) với khoảng 20.000 hình ảnh trong tổng số và 5 loại đối tượng (thông tin thêm trong [`ssd7_training.ipynb`](ssd7_training.ipynb)). Các dự đoán bạn thấy dưới đây được đưa ra sau 10.000 bước đào tạo ở cỡ lô 32. Phải thừa nhận rằng, ô tô là đối tượng tương đối dễ phát hiện và tôi đã chọn một vài ví dụ tốt hơn, nhưng dù sao một mô hình nhỏ như vậy có thể làm được chỉ sau 10.000 lặp đi lặp lại đào tạo.
 
 | | |
 |---|---|
@@ -149,76 +147,76 @@ Here are some prediction examples of an SSD7 (i.e. the small 7-layer version) pa
 * OpenCV
 * Beautiful Soup 4.x
 
-The Theano and CNTK backends are currently not supported.
+Các phụ trợ Theano và CNTK hiện không được hỗ trợ.
 
-Python 2 compatibility: This implementation seems to work with Python 2.7, but I don't provide any support for it. It's 2018 and nobody should be using Python 2 anymore.
+Khả năng tương thích Python 2: Việc triển khai này dường như hoạt động với Python 2.7, nhưng tôi không cung cấp bất kỳ hỗ trợ nào cho nó. Đó là năm 2018 và không ai nên sử dụng Python 2 nữa.
 
 ### How to use it
 
-This repository provides Jupyter notebook tutorials that explain training, inference and evaluation, and there are a bunch of explanations in the subsequent sections that complement the notebooks.
+Kho lưu trữ này cung cấp các hướng dẫn về máy tính xách tay Jupyter để giải thích về đào tạo, suy luận và đánh giá, và có một loạt các giải thích trong các phần tiếp theo bổ sung cho sổ ghi chép.
 
-How to use a trained model for inference:
+Làm thế nào để sử dụng một mô hình được đào tạo để suy luận:
 * [`ssd300_inference.ipynb`](ssd300_inference.ipynb)
 * [`ssd512_inference.ipynb`](ssd512_inference.ipynb)
 
-How to train a model:
+Cách đào tạo mo hinh (model):
 * [`ssd300_training.ipynb`](ssd300_training.ipynb)
 * [`ssd7_training.ipynb`](ssd7_training.ipynb)
 
-How to use one of the provided trained models for transfer learning on your own dataset:
+Cách sử dụng một trong những mô hình được đào tạo được cung cấp để học chuyển trên tập dữ liệu của riêng bạn:
 * [Read below](#how-to-fine-tune-one-of-the-trained-models-on-your-own-dataset)
 
-How to evaluate a trained model:
+Làm thế nào để đánh giá một mô hình được đào tạo:
 * In general: [`ssd300_evaluation.ipynb`](ssd300_evaluation.ipynb)
 * On MS COCO: [`ssd300_evaluation_COCO.ipynb`](ssd300_evaluation_COCO.ipynb)
 
-How to use the data generator:
+Cách sử dụng trình tạo dữ liệu:
 * The data generator used here has its own repository with a detailed tutorial [here](https://github.com/pierluigiferrari/data_generator_object_detection_2d)
 
 #### Training details
 
-The general training setup is layed out and explained in [`ssd7_training.ipynb`](ssd7_training.ipynb) and in [`ssd300_training.ipynb`](ssd300_training.ipynb). The setup and explanations are similar in both notebooks for the most part, so it doesn't matter which one you look at to understand the general training setup, but the parameters in [`ssd300_training.ipynb`](ssd300_training.ipynb) are preset to copy the setup of the original Caffe implementation for training on Pascal VOC, while the parameters in [`ssd7_training.ipynb`](ssd7_training.ipynb) are preset to train on the [Udacity traffic datasets](https://github.com/udacity/self-driving-car/tree/master/annotations).
+Các thiết lập đào tạo chung được đặt ra và giải thích trong [`ssd7_training.ipynb`](ssd7_training.ipynb) và trong[`ssd300_training.ipynb`](ssd300_training.ipynb). Hầu hết các thiết lập và giải thích đều giống nhau ở cả hai máy tính xách tay, vì vậy không quan trọng bạn phải nhìn vào thiết lập đào tạo chung nào, nhưng các tham số trong [`ssd300_training.ipynb`](ssd300_training.ipynb) được cài đặt sẵn để sao chép thiết lập triển khai Caffe ban đầu để đào tạo về Pascal VOC, trong khi các tham số trong [`ssd7_training.ipynb`](ssd7_training.ipynb) được cài sẵn để đào tạo trên [Udacity traffic datasets](https://github.com/udacity/self-driving-car/tree/master/annotations).
 
-To train the original SSD300 model on Pascal VOC:
+Để đào tạo mô hình SSD300 gốc trên Pascal VOC:
 
-1. Download the datasets:
+1. Tai tap datasets:
   ```c
   wget http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
   wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
   wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar
   ```
-2. Download the weights for the convolutionalized VGG-16 or for one of the trained original models provided below.
-3. Set the file paths for the datasets and model weights accordingly in [`ssd300_training.ipynb`](ssd300_training.ipynb) and execute the cells.
+2. Tải về các trọng số cho VGG-16 tích chập hoặc cho một trong các mô hình ban đầu được đào tạo được cung cấp dưới đây.
+3. Đặt đường dẫn tệp cho bộ dữ liệu và trọng lượng mô hình tương ứng trong [`ssd300_training.ipynb`](ssd300_training.ipynb) và thực thi các ô.
 
-The procedure for training SSD512 is the same of course. It is imperative that you load the pre-trained VGG-16 weights when attempting to train an SSD300 or SSD512 from scratch, otherwise the training will probably fail. Here is a summary of a full training of the SSD300 "07+12" model for comparison with your own training:
+Tất nhiên, quy trình đào tạo SSD512 là giống nhau. Điều bắt buộc là bạn phải tải trọng lượng VGG-16 đã được đào tạo trước khi cố gắng đào tạo SSD300 hoặc SSD512 từ đầu, nếu không việc đào tạo có thể sẽ thất bại. Dưới đây là tóm tắt về đào tạo đầy đủ về mô hình SSD300 "07 + 12" để so sánh với đào tạo của riêng bạn:
 
 * [SSD300 Pascal VOC "07+12" training summary](training_summaries/ssd300_pascal_07+12_training_summary.md)
 
 #### Encoding and decoding boxes
 
-The [`ssd_encoder_decoder`](ssd_encoder_decoder) sub-package contains all functions and classes related to encoding and decoding boxes. Encoding boxes means converting ground truth labels into the target format that the loss function needs during training. It is this encoding process in which the matching of ground truth boxes to anchor boxes (the paper calls them default boxes and in the original C++ code they are called priors - all the same thing) happens. Decoding boxes means converting raw model output back to the input label format, which entails various conversion and filtering processes such as non-maximum suppression (NMS).
+The [`ssd_encoder_decoder`](ssd_encoder_decoder) gói phụ chứa tất cả các hàm và các lớp liên quan đến hộp mã hóa và giải mã. Hộp mã hóa có nghĩa là chuyển đổi nhãn sự thật mặt đất thành định dạng mục tiêu mà hàm mất mát cần trong quá trình đào tạo. Đây là quá trình mã hóa trong đó việc khớp các hộp sự thật với các hộp neo (tờ giấy gọi chúng là các hộp mặc định và trong mã C ++ ban đầu, chúng được gọi là linh mục - tất cả đều giống nhau). Các hộp giải mã có nghĩa là chuyển đổi đầu ra mô hình thô trở lại định dạng nhãn đầu vào, đòi hỏi nhiều quá trình chuyển đổi và lọc khác nhau như triệt tiêu không tối đa (NMS).
 
-In order to train the model, you need to create an instance of `SSDInputEncoder` that needs to be passed to the data generator. The data generator does the rest, so you don't usually need to call any of `SSDInputEncoder`'s methods manually.
+Để huấn luyện mô hình, bạn cần tạo một thể hiện của 'SSDInputEncoder` cần được truyền đến trình tạo dữ liệu. Trình tạo dữ liệu thực hiện phần còn lại, do đó bạn thường không cần gọi bất kỳ phương thức nào của 'SSDInputEncoder`.
 
-Models can be created in 'training' or 'inference' mode. In 'training' mode, the model outputs the raw prediction tensor that still needs to be post-processed with coordinate conversion, confidence thresholding, non-maximum suppression, etc. The functions `decode_detections()` and `decode_detections_fast()` are responsible for that. The former follows the original Caffe implementation, which entails performing NMS per object class, while the latter performs NMS globally across all object classes and is thus more efficient, but also behaves slightly differently. Read the documentation for details about both functions. If a model is created in 'inference' mode, its last layer is the `DecodeDetections` layer, which performs all the post-processing that `decode_detections()` does, but in TensorFlow. That means the output of the model is already the post-processed output. In order to be trainable, a model must be created in 'training' mode. The trained weights can then later be loaded into a model that was created in 'inference' mode.
+Các mô hình có thể được tạo trong chế độ 'đào tạo' hoặc 'suy luận'. Trong chế độ 'đào tạo', mô hình đưa ra thang đo dự đoán thô vẫn cần được xử lý hậu kỳ với chuyển đổi tọa độ, ngưỡng tin cậy, triệt tiêu không tối đa, v.v. Các hàm `decode_detections ()` và `decode_detections_fast ()` cho điều đó Cái trước tuân theo việc triển khai Caffe ban đầu, đòi hỏi phải thực hiện NMS trên mỗi lớp đối tượng, trong khi cái sau thực hiện NMS trên toàn cầu trên tất cả các lớp đối tượng và do đó hiệu quả hơn, nhưng cũng hoạt động hơi khác. Đọc tài liệu để biết chi tiết về cả hai chức năng. Nếu một mô hình được tạo ở chế độ 'suy luận', thì lớp cuối cùng của nó là lớp `DecodeDetections`, thực hiện tất cả quá trình xử lý hậu kỳ mà` decode_detections () `thực hiện, nhưng trong TensorFlow. Điều đó có nghĩa là đầu ra của mô hình đã là đầu ra được xử lý sau. Để có thể huấn luyện, một mô hình phải được tạo trong chế độ 'đào tạo'. Các trọng số được đào tạo sau đó có thể được tải vào một mô hình được tạo ở chế độ 'suy luận'.
 
-A note on the anchor box offset coordinates used internally by the model: This may or may not be obvious to you, but it is important to understand that it is not possible for the model to predict absolute coordinates for the predicted bounding boxes. In order to be able to predict absolute box coordinates, the convolutional layers responsible for localization would need to produce different output values for the same object instance at different locations within the input image. This isn't possible of course: For a given input to the filter of a convolutional layer, the filter will produce the same output regardless of the spatial position within the image because of the shared weights. This is the reason why the model predicts offsets to anchor boxes instead of absolute coordinates, and why during training, absolute ground truth coordinates are converted to anchor box offsets in the encoding process. The fact that the model predicts offsets to anchor box coordinates is in turn the reason why the model contains anchor box layers that do nothing but output the anchor box coordinates so that the model's output tensor can include those. If the model's output tensor did not contain the anchor box coordinates, the information to convert the predicted offsets back to absolute coordinates would be missing in the model output.
+Một lưu ý về tọa độ bù hộp neo được mô hình sử dụng bên trong: Điều này có thể rõ ràng hoặc không rõ ràng đối với bạn, nhưng điều quan trọng là phải hiểu rằng mô hình không thể dự đoán tọa độ tuyệt đối cho các hộp giới hạn dự đoán. Để có thể dự đoán tọa độ hộp tuyệt đối, các lớp chập chịu trách nhiệm nội địa hóa sẽ cần tạo ra các giá trị đầu ra khác nhau cho cùng một đối tượng tại các vị trí khác nhau trong ảnh đầu vào. Tất nhiên, điều này là không thể: Đối với một đầu vào nhất định cho bộ lọc của lớp chập, bộ lọc sẽ tạo ra cùng một đầu ra bất kể vị trí không gian trong ảnh do các trọng số được chia sẻ. Đây là lý do tại sao mô hình dự đoán offset cho các hộp neo thay vì tọa độ tuyệt đối và tại sao trong quá trình đào tạo, tọa độ chân lý mặt đất tuyệt đối được chuyển đổi thành offset của hộp neo trong quá trình mã hóa. Thực tế là mô hình dự đoán độ lệch cho tọa độ hộp neo lần lượt là lý do tại sao mô hình chứa các lớp hộp neo không làm gì ngoài việc xuất tọa độ hộp neo để có thể bao gồm các thang đo đầu ra của mô hình. Nếu tenxơ đầu ra của mô hình không chứa tọa độ hộp neo, thông tin để chuyển đổi các độ lệch dự đoán trở lại tọa độ tuyệt đối sẽ bị thiếu trong đầu ra mô hình.
 
 #### Using a different base network architecture
 
-If you want to build a different base network architecture, you could use [`keras_ssd7.py`](models/keras_ssd7.py) as a template. It provides documentation and comments to help you turn it into a different base network. Put together the base network you want and add a predictor layer on top of each network layer from which you would like to make predictions. Create two predictor heads for each, one for localization, one for classification. Create an anchor box layer for each predictor layer and set the respective localization head's output as the input for the anchor box layer. The structure of all tensor reshaping and concatenation operations remains the same, you just have to make sure to include all of your predictor and anchor box layers of course.
+Nếu bạn muốn xây dựng một kiến trúc mạng cơ sở khác, bạn có thể sử dụng [`keras_ssd7.py`] (model / keras_ssd7.py) làm mẫu. Nó cung cấp tài liệu và ý kiến để giúp bạn biến nó thành một mạng cơ sở khác. Kết hợp mạng cơ sở mà bạn muốn và thêm một lớp dự đoán lên trên mỗi lớp mạng mà bạn muốn đưa ra dự đoán. Tạo hai đầu dự đoán cho mỗi đầu, một để định vị, một để phân loại. Tạo một lớp hộp neo cho mỗi lớp dự đoán và đặt đầu ra của đầu địa phương hóa tương ứng làm đầu vào cho lớp hộp neo. Cấu trúc của tất cả các hoạt động định hình lại và nối ghép vẫn giữ nguyên, bạn chỉ cần đảm bảo bao gồm tất cả các lớp dự đoán và các lớp hộp neo của bạn.
 
 ### Download the convolutionalized VGG-16 weights
 
-In order to train an SSD300 or SSD512 from scratch, download the weights of the fully convolutionalized VGG-16 model trained to convergence on ImageNet classification here:
+Để huấn luyện SSD300 hoặc SSD512 từ đầu, hãy tải xuống các trọng số của mẫu VGG-16 được tích hợp hoàn toàn được đào tạo để hội tụ về phân loại ImageNet tại đây:
 
 [`VGG_ILSVRC_16_layers_fc_reduced.h5`](https://drive.google.com/open?id=1sBmajn6vOE7qJ8GnxUJt4fGPuffVUZox).
 
-As with all other weights files below, this is a direct port of the corresponding `.caffemodel` file that is provided in the repository of the original Caffe implementation.
+Như với tất cả các tệp trọng lượng khác bên dưới, đây là cổng trực tiếp của tệp `.caffemodel` tương ứng được cung cấp trong kho lưu trữ của triển khai Caffe gốc.
 
 ### Download the original trained model weights
 
-Here are the ported weights for all the original trained models. The filenames correspond to their respective `.caffemodel` counterparts. The asterisks and footnotes refer to those in the README of the [original Caffe implementation](https://github.com/weiliu89/caffe/tree/ssd#models).
+Dưới đây là các trọng số được chuyển cho tất cả các mô hình được đào tạo ban đầu. Tên tệp tương ứng với các đối tác `.caffemodel` tương ứng của chúng. Dấu hoa thị và chú thích đề cập đến những người trong README của [original Caffe implementation](https://github.com/weiliu89/caffe/tree/ssd#models).
 
 1. PASCAL VOC models:
 
@@ -240,27 +238,27 @@ Here are the ported weights for all the original trained models. The filenames c
 
 ### How to fine-tune one of the trained models on your own dataset
 
-If you want to fine-tune one of the provided trained models on your own dataset, chances are your dataset doesn't have the same number of classes as the trained model. The following tutorial explains how to deal with this problem:
+Nếu bạn muốn tinh chỉnh một trong những mô hình được đào tạo được cung cấp trên tập dữ liệu của riêng bạn, rất có thể tập dữ liệu của bạn không có cùng số lượng lớp với mô hình được đào tạo. Hướng dẫn sau đây giải thích cách giải quyết vấn đề này:
 
 [`weight_sampling_tutorial.ipynb`](weight_sampling_tutorial.ipynb)
 
 ### ToDo
 
-The following things are on the to-do list, ranked by priority. Contributions are welcome, but please read the [contributing guidelines](CONTRIBUTING.md).
+Những điều sau đây nằm trong danh sách việc cần làm, được xếp hạng theo mức độ ưu tiên. Đóng góp được hoan nghênh, nhưng vui lòng đọc [contributing guidelines](CONTRIBUTING.md).
 
-1. Add model definitions and trained weights for SSDs based on other base networks such as MobileNet, InceptionResNetV2, or DenseNet.
-2. Add support for the Theano and CNTK backends. Requires porting the custom layers and the loss function from TensorFlow to the abstract Keras backend.
+1. Thêm định nghĩa mô hình và trọng lượng được đào tạo cho SSD dựa trên các mạng cơ sở khác như MobileNet, InceptionResNetV2 hoặc DenseNet.
+2. Thêm hỗ trợ cho các phụ trợ Theano và CNTK. Yêu cầu chuyển các lớp tùy chỉnh và chức năng mất từ TensorFlow sang phụ trợ Keras trừu tượng.
 
-Currently in the works:
+Hiện đang trong công trình:
 
 * A new [Focal Loss](https://arxiv.org/abs/1708.02002) loss function.
 
 ### Important notes
 
-* All trained models that were trained on MS COCO use the smaller anchor box scaling factors provided in all of the Jupyter notebooks. In particular, note that the '07+12+COCO' and '07++12+COCO' models use the smaller scaling factors.
+* Tất cả các mô hình được đào tạo đã được đào tạo về MS COCO sử dụng các hệ số tỷ lệ hộp neo nhỏ hơn được cung cấp trong tất cả các máy tính xách tay Jupyter. Cụ thể, lưu ý rằng các mô hình '07 + 12 + COCO 'và '07 ++ 12 + COCO' sử dụng các hệ số tỷ lệ nhỏ hơn.
 
 ### Terminology
 
-* "Anchor boxes": The paper calls them "default boxes", in the original C++ code they are called "prior boxes" or "priors", and the Faster R-CNN paper calls them "anchor boxes". All terms mean the same thing, but I slightly prefer the name "anchor boxes" because I find it to be the most descriptive of these names. I call them "prior boxes" or "priors" in `keras_ssd300.py` and `keras_ssd512.py` to stay consistent with the original Caffe implementation, but everywhere else I use the name "anchor boxes" or "anchors".
-* "Labels": For the purpose of this project, datasets consist of "images" and "labels". Everything that belongs to the annotations of a given image is the "labels" of that image: Not just object category labels, but also bounding box coordinates. "Labels" is just shorter than "annotations". I also use the terms "labels" and "targets" more or less interchangeably throughout the documentation, although "targets" means labels specifically in the context of training.
-* "Predictor layer": The "predictor layers" or "predictors" are all the last convolution layers of the network, i.e. all convolution layers that do not feed into any subsequent convolution layers.
+*"Hộp neo": Bài báo gọi chúng là "hộp mặc định", trong mã C ++ ban đầu, chúng được gọi là "hộp trước" hoặc "linh mục" và giấy Faster R-CNN gọi chúng là "hộp neo". Tất cả các thuật ngữ đều có nghĩa giống nhau, nhưng tôi hơi thích cái tên "hộp neo" bởi vì tôi thấy nó là mô tả nhất về những cái tên này. Tôi gọi chúng là "các hộp trước" hoặc "linh mục" trong `keras_ssd300.py` và` keras_ssd512.py` để phù hợp với triển khai Caffe ban đầu, nhưng ở mọi nơi khác tôi sử dụng tên" hộp neo "hoặc" neo ".
+* "Nhãn": Đối với mục đích của dự án này, bộ dữ liệu bao gồm "hình ảnh" và "nhãn". Tất cả mọi thứ thuộc về chú thích của một hình ảnh nhất định là "nhãn" của hình ảnh đó: Không chỉ nhãn thể loại đối tượng, mà còn cả tọa độ hộp giới hạn. "Nhãn" chỉ ngắn hơn "chú thích". Tôi cũng sử dụng thuật ngữ "nhãn" và "mục tiêu" ít nhiều có thể thay thế cho nhau trong toàn bộ tài liệu, mặc dù "mục tiêu" có nghĩa là nhãn cụ thể trong bối cảnh đào tạo.
+* "Lớp dự đoán": "Lớp dự đoán" hoặc "lớp dự đoán" là tất cả các lớp chập cuối cùng của mạng, tức là tất cả các lớp chập không cung cấp cho bất kỳ lớp chập tiếp theo nào.
