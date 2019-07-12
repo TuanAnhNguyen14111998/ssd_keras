@@ -1,33 +1,25 @@
-'''
-A Keras port of the original Caffe SSD300 network.
-
-Copyright (C) 2018 Pierluigi Ferrari
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-'''
-
+# Nhap cac thu vien can thiet
 from __future__ import division
 import numpy as np
+# Nhap cac lop duoc dinh nghia trong Keras
 from keras.models import Model
 from keras.layers import Input, Lambda, Activation, Conv2D, MaxPooling2D, ZeroPadding2D, Reshape, Concatenate
+# Nhap trinh chuan hoa L2
 from keras.regularizers import l2
+# Nhap backend cua Keras
 import keras.backend as K
 
+# Nhap cac class duoc custom lai tu cac class cua Keras
+# Class AnchorBox
 from keras_layers.keras_layer_AnchorBoxes import AnchorBoxes
+# Class chuan hoa L2
 from keras_layers.keras_layer_L2Normalization import L2Normalization
+# Class cho phep thuc hien decode cac ouput raw thanh cac toa do tuyet doi trong
+# che do predict sau khi dao tao model
 from keras_layers.keras_layer_DecodeDetections import DecodeDetections
 from keras_layers.keras_layer_DecodeDetectionsFast import DecodeDetectionsFast
 
+# Phuong thuc thuc hien dinh nghia cac tham so cau hinh cua model va kien truc cua model
 def ssd_300(image_size,
             n_classes,
             mode='training',
@@ -58,57 +50,77 @@ def ssd_300(image_size,
             nms_max_output_size=400,
             return_predictor_sizes=False):
     '''
-    Build a Keras model with SSD300 architecture, see references.
+    Xay dung model Keras voi kien truc SSD300, xem tai lieu tham khao.
 
-    The base network is a reduced atrous VGG-16, extended by the SSD architecture,
-    as described in the paper.
+    Base network la mot mang VGG-16 duoc cat bo cac lop classification, va duoc
+    mo rong them boi kien truc SSD, nhu da duoc mo ta trong bai bao: (tuc la sau VGG-16,
+    se co 6 lop conv predictor)
 
-    Most of the arguments that this function takes are only needed for the anchor
-    box layers. In case you're training the network, the parameters passed here must
-    be the same as the ones used to set up `SSDBoxEncoder`. In case you're loading
-    trained weights, the parameters passed here must be the same as the ones used
-    to produce the trained weights.
+    Hau het cac doi so ma function nay lay la cac tham so can thiet cho viec thiet lap anchor box.
+    Trong truong hop ban dang trainning network, cac tham so duoc truyen o day phai giong
+    voi cac tham so duoc thiet lap trong `SSDBoxEncoder` ~ day co the la class cho phep
+    chuyen cac raw box ve dang toa do box tuyet doi (encode).
+    Trong truong hop ban tai trong so da duoc dao tao truoc cua model, thi cac tham so o day
+    phai giong voi cac tham so duoc su dung de tao ra cac trong so da duoc dao tao truoc do.
 
-    Some of these arguments are explained in more detail in the documentation of the
-    `SSDBoxEncoder` class.
+    Mot so trong cac doi so nay duoc giai thich chi tiet hon trong tai lieu cua lop `SSDBoxEncoder`.
 
-    Note: Requires Keras v2.0 or later. Currently works only with the
-    TensorFlow backend (v1.0 or later).
+    Luu y: yeu cau phien ban Keras 2.0 tro len, va hien tai chi hoat dong voi phien ban
+    Tensorflow backend voi phien ban 1.0 tro len.
 
-    Arguments:
-        image_size (tuple): The input image size in the format `(height, width, channels)`.
-        n_classes (int): The number of positive classes, e.g. 20 for Pascal VOC, 80 for MS COCO.
-        mode (str, optional): One of 'training', 'inference' and 'inference_fast'. In 'training' mode,
-            the model outputs the raw prediction tensor, while in 'inference' and 'inference_fast' modes,
-            the raw predictions are decoded into absolute coordinates and filtered via confidence thresholding,
-            non-maximum suppression, and top-k filtering. The difference between latter two modes is that
-            'inference' follows the exact procedure of the original Caffe implementation, while
-            'inference_fast' uses a faster prediction decoding procedure.
-        l2_regularization (float, optional): The L2-regularization rate. Applies to all convolutional layers.
-            Set to zero to deactivate L2-regularization.
-        min_scale (float, optional): The smallest scaling factor for the size of the anchor boxes as a fraction
-            of the shorter side of the input images.
-        max_scale (float, optional): The largest scaling factor for the size of the anchor boxes as a fraction
-            of the shorter side of the input images. All scaling factors between the smallest and the
-            largest will be linearly interpolated. Note that the second to last of the linearly interpolated
-            scaling factors will actually be the scaling factor for the last predictor layer, while the last
-            scaling factor is used for the second box for aspect ratio 1 in the last predictor layer
-            if `two_boxes_for_ar1` is `True`.
-        scales (list, optional): A list of floats containing scaling factors per convolutional predictor layer.
-            This list must be one element longer than the number of predictor layers. The first `k` elements are the
-            scaling factors for the `k` predictor layers, while the last element is used for the second box
-            for aspect ratio 1 in the last predictor layer if `two_boxes_for_ar1` is `True`. This additional
-            last scaling factor must be passed either way, even if it is not being used. If a list is passed,
-            this argument overrides `min_scale` and `max_scale`. All scaling factors must be greater than zero.
-        aspect_ratios_global (list, optional): The list of aspect ratios for which anchor boxes are to be
-            generated. This list is valid for all prediction layers.
-        aspect_ratios_per_layer (list, optional): A list containing one aspect ratio list for each prediction layer.
-            This allows you to set the aspect ratios for each predictor layer individually, which is the case for the
-            original SSD300 implementation. If a list is passed, it overrides `aspect_ratios_global`.
-        two_boxes_for_ar1 (bool, optional): Only relevant for aspect ratio lists that contain 1. Will be ignored otherwise.
-            If `True`, two anchor boxes will be generated for aspect ratio 1. The first will be generated
-            using the scaling factor for the respective layer, the second one will be generated using
-            geometric mean of said scaling factor and next bigger scaling factor.
+    ##############################################################################
+    ##          Giai thich cac tham so duoc truyen vao
+    ##############################################################################
+
+    Cac doi so:
+        * image_size (tuple): Kich thuoc hinh anh dau vao duoi dinh dang `(height, width, channels)`.
+        * n_classes (int): So luong cac class positive, vi du: 20 cho Pascal VOC, 80 cho MS COCO.
+        * mode (str, optional): Mot trong cac gia tri 'training', 'inference' va 'inference_fast'.
+                Trong do che do 'trainning': lam cho dau ra cua model (ouput model) la cac tensor
+                    du doan tho (raw prediction tensor), 
+                Trong khi do cac che do 'inference' va 'inference_fast',
+                    thi cac du doan tho se duoc giai ma (encode) thanh toa do tuyet doi, va duoc loc qua
+                    nguong tin cay (confidence thresholding), non-maximum suppression, va trinh loc dua
+                    vao top-k. 
+                Su khac biet giua hai che do 'inference (suy luan)' nay do la:
+                    inference dc follow theo chinh xac quy tirnh suy luan trong trien khai Caffe ban bau
+                    inference_fast su dung cac thu tuc giai ma (encode) nhanh hon.
+        * l2_regularization (float, optional): Ty le chuan hoa L2, va no duoc ap dung cho tat ca cac lop
+                tich chap. Dat gia tri nay thanh 0 de huy viec kich hoat chuan hoa L2.
+        * min_scale (float, optional): He so ty le nho nhat cho kich thuoc (size) cua cac anchor box
+                duoi dang phan so cua cac canh ngan hon cua hinh anh dau vao.
+        * max_scale (float, optional): He so ty le lon nhat cho kich thuoc cua cac anchor box nhu la 
+                mot phan so cua cac canh ngan hon cua hinh anh dau vao.
+                Tat ca cac phan tu ty le nam giua ty le nho nhat va ty le lon nhat se duoc noi suy
+                tuyen tinh.
+                Luu y rang, phan tu ty le thu hai den cuoi cung cua cac phan tu ty le noi suy tuyen tinh
+                se thuc su la he so ty le cho lop predictor cuoi cung (last predictor layer),
+                Trong khi do, he so ty le cuoi cung duoc su dung cho box thu hai (second box) cho ty le
+                khung hinh 1 (aspect ratio 1) trong lop du doan cuoi cung (last predictor) trong lop
+                du doan cuoi cung neu two_boxes_for_ar1 = True
+        * scales (list, optional): Mot list cac gia tri float bieu thi cho cac he so ty le tren moi
+                moi convolutional predictor layer.
+                Danh sach nay phai dai hon mot phan tu so voi so luong cac lop du doan (predictor layers)
+                K phan tu dau tien la cac he so ty le cho k lop predictor dau tien, trong khi phan tu
+                cuoi cung duoc su dung cho second box cua aspect ratio 1 trong lop predictor cuoi cung
+                neu `two_boxes_for_ar1` = true. He so ty le cuoi cung duoc them vao nay phai duoc thong qua mot trong hai cach, ngay ca khi no khong duoc su dung. Do la:
+                    Neu mot list duoc thong qua, doi so nay se ghi de len cac gia tri min_scale va max_sacle.
+                    Tat ca cac phan tu he so ty le phai lon hon 0.
+        * aspect_ratios_global (list, optional): Danh sach ty le khung hinh (aspect ratios) de tao ra
+                cac anchor box. Danh sach nay la hop le cho tat ca cac predictor layer (day la danh
+                sach toan cau duoc su dung boi tat ca cac lop predictor layer).
+        * aspect_ratios_per_layer (list, optional): Mot list cac ty le khung hinh (aspect ratios) cho 
+                moi lop du doan.
+                Dieu nay cho phep ban dat ty le khung hinh cho tung lop predictor rieng le,
+                day la truong hop trien khai ban dau cua SSD300 goc. Neu list nay duoc thong qua
+                thi no se ghi de len list `aspect_ratios_global`.
+        * two_boxes_for_ar1 (bool, optional): Chi lien quan den danh sach (list) co chua ty le khung hinh
+                (aspect ratios) co chua gia tri 1. Va se bo qua neu list aspect_ratios nay ko chua he so
+                ty le = 1.
+                    Neu True, hai anchor box se duoc tao ra voi aspect ratio bang 1.
+                    Cai dau tien se duoc tao ra bang viec su dung he so ty le cua lop (layer) tuong ung
+                    Cai thu hai se duoc tao ra bang cach su dung gia tri trung binh hinh hoc cua he
+                    so ty le dang de cap voi he so ty le lon hon tiep theo.
         steps (list, optional): `None` or a list with as many elements as there are predictor layers. The elements can be
             either ints/floats or tuples of two ints/floats. These numbers represent for each predictor layer how many
             pixels apart the anchor box center points should be vertically and horizontally along the spatial grid over
