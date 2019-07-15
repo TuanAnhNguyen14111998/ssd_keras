@@ -1,0 +1,14 @@
+jupyter
+numpy
+scikit-learn
+Pillow
+numpy
+argparse
+opencv-python
+times
+dlib
+Keras
+imutils
+tqdm
+tensorflow
+matplotlib

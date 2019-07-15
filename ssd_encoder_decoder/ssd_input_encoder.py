@@ -1,19 +1,7 @@
 '''
-An encoder that converts ground truth annotations to SSD-compatible training targets.
+Mot encoder chuyen doi ground truth annotations (cac chu thich cua bbx nhan) thanh
+muc tieu dao tao tuong thich voi SSD
 
-Copyright (C) 2018 Pierluigi Ferrari
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
 '''
 
 from __future__ import division
@@ -24,250 +12,344 @@ from ssd_encoder_decoder.matching_utils import match_bipartite_greedy, match_mul
 
 class SSDInputEncoder:
     '''
-    Transforms ground truth labels for object detection in images
-    (2D bounding box coordinates and class labels) to the format required for
-    training an SSD model.
+    Chuyen doi cac ground truth labels cho detect object trong hinh anh (toa do cac bbx
+    2D va cac class labels) thanh dinh dang can thiet de dao tao model SSD.
 
-    In the process of encoding the ground truth labels, a template of anchor boxes
-    is being built, which are subsequently matched to the ground truth boxes
-    via an intersection-over-union threshold criterion.
+    Trong qua trinh encoding cac ground truth labels, mot template cac anchor box dang
+    duoc xay dung, sau do no duoc khop voi cac ground truth boxes thong qua chi so
+    IoU giao nhau
     '''
 
-    def __init__(self,
-                 img_height,
-                 img_width,
-                 n_classes,
-                 predictor_sizes,
-                 min_scale=0.1,
-                 max_scale=0.9,
-                 scales=None,
-                 aspect_ratios_global=[0.5, 1.0, 2.0],
-                 aspect_ratios_per_layer=None,
-                 two_boxes_for_ar1=True,
-                 steps=None,
-                 offsets=None,
-                 clip_boxes=False,
-                 variances=[0.1, 0.1, 0.2, 0.2],
-                 matching_type='multi',
-                 pos_iou_threshold=0.5,
-                 neg_iou_limit=0.3,
-                 border_pixels='half',
-                 coords='centroids',
-                 normalize_coords=True,
-                 background_id=0):
+    def __init__(self, img_height, img_width, n_classes, predictor_sizes, min_scale=0.1, max_scale=0.9, scales=None, aspect_ratios_global=[0.5, 1.0, 2.0], aspect_ratios_per_layer=None, two_boxes_for_ar1=True, steps=None, offsets=None, clip_boxes=False, variances=[0.1, 0.1, 0.2, 0.2], matching_type='multi', pos_iou_threshold=0.5, neg_iou_limit=0.3, border_pixels='half', coords='centroids', normalize_coords=True, background_id=0):
         '''
-        Arguments:
-            img_height (int): The height of the input images.
-            img_width (int): The width of the input images.
-            n_classes (int): The number of positive classes, e.g. 20 for Pascal VOC, 80 for MS COCO.
-            predictor_sizes (list): A list of int-tuples of the format `(height, width)`
-                containing the output heights and widths of the convolutional predictor layers.
-            min_scale (float, optional): The smallest scaling factor for the size of the anchor boxes as a fraction
-                of the shorter side of the input images. Note that you should set the scaling factors
-                such that the resulting anchor box sizes correspond to the sizes of the objects you are trying
-                to detect. Must be >0.
-            max_scale (float, optional): The largest scaling factor for the size of the anchor boxes as a fraction
-                of the shorter side of the input images. All scaling factors between the smallest and the
-                largest will be linearly interpolated. Note that the second to last of the linearly interpolated
-                scaling factors will actually be the scaling factor for the last predictor layer, while the last
-                scaling factor is used for the second box for aspect ratio 1 in the last predictor layer
-                if `two_boxes_for_ar1` is `True`. Note that you should set the scaling factors
-                such that the resulting anchor box sizes correspond to the sizes of the objects you are trying
-                to detect. Must be greater than or equal to `min_scale`.
-            scales (list, optional): A list of floats >0 containing scaling factors per convolutional predictor layer.
-                This list must be one element longer than the number of predictor layers. The first `k` elements are the
-                scaling factors for the `k` predictor layers, while the last element is used for the second box
-                for aspect ratio 1 in the last predictor layer if `two_boxes_for_ar1` is `True`. This additional
-                last scaling factor must be passed either way, even if it is not being used. If a list is passed,
-                this argument overrides `min_scale` and `max_scale`. All scaling factors must be greater than zero.
-                Note that you should set the scaling factors such that the resulting anchor box sizes correspond to
-                the sizes of the objects you are trying to detect.
-            aspect_ratios_global (list, optional): The list of aspect ratios for which anchor boxes are to be
-                generated. This list is valid for all prediction layers. Note that you should set the aspect ratios such
-                that the resulting anchor box shapes roughly correspond to the shapes of the objects you are trying to detect.
-            aspect_ratios_per_layer (list, optional): A list containing one aspect ratio list for each prediction layer.
-                If a list is passed, it overrides `aspect_ratios_global`. Note that you should set the aspect ratios such
-                that the resulting anchor box shapes very roughly correspond to the shapes of the objects you are trying to detect.
-            two_boxes_for_ar1 (bool, optional): Only relevant for aspect ratios lists that contain 1. Will be ignored otherwise.
-                If `True`, two anchor boxes will be generated for aspect ratio 1. The first will be generated
-                using the scaling factor for the respective layer, the second one will be generated using
-                geometric mean of said scaling factor and next bigger scaling factor.
-            steps (list, optional): `None` or a list with as many elements as there are predictor layers. The elements can be
-                either ints/floats or tuples of two ints/floats. These numbers represent for each predictor layer how many
-                pixels apart the anchor box center points should be vertically and horizontally along the spatial grid over
-                the image. If the list contains ints/floats, then that value will be used for both spatial dimensions.
-                If the list contains tuples of two ints/floats, then they represent `(step_height, step_width)`.
-                If no steps are provided, then they will be computed such that the anchor box center points will form an
-                equidistant grid within the image dimensions.
-            offsets (list, optional): `None` or a list with as many elements as there are predictor layers. The elements can be
-                either floats or tuples of two floats. These numbers represent for each predictor layer how many
-                pixels from the top and left boarders of the image the top-most and left-most anchor box center points should be
-                as a fraction of `steps`. The last bit is important: The offsets are not absolute pixel values, but fractions
-                of the step size specified in the `steps` argument. If the list contains floats, then that value will
-                be used for both spatial dimensions. If the list contains tuples of two floats, then they represent
-                `(vertical_offset, horizontal_offset)`. If no offsets are provided, then they will default to 0.5 of the step size.
-            clip_boxes (bool, optional): If `True`, limits the anchor box coordinates to stay within image boundaries.
-            variances (list, optional): A list of 4 floats >0. The anchor box offset for each coordinate will be divided by
-                its respective variance value.
-            matching_type (str, optional): Can be either 'multi' or 'bipartite'. In 'bipartite' mode, each ground truth box will
-                be matched only to the one anchor box with the highest IoU overlap. In 'multi' mode, in addition to the aforementioned
-                bipartite matching, all anchor boxes with an IoU overlap greater than or equal to the `pos_iou_threshold` will be
-                matched to a given ground truth box.
-            pos_iou_threshold (float, optional): The intersection-over-union similarity threshold that must be
-                met in order to match a given ground truth box to a given anchor box.
-            neg_iou_limit (float, optional): The maximum allowed intersection-over-union similarity of an
-                anchor box with any ground truth box to be labeled a negative (i.e. background) box. If an
-                anchor box is neither a positive, nor a negative box, it will be ignored during training.
-            border_pixels (str, optional): How to treat the border pixels of the bounding boxes.
+        Cac doi so:
+            * img_height (int): Chieu cao cua hinh anh dau vao
+            * img_width (int): Chieu rong cua hinh anh dau vao
+            * n_classes (int):
+                - So luong cac class positives (cac class object, ko phai class background)
+                  vi du: 20 cho Pascal VOC, 80 cho MS COCO.
+            * predictor_sizes (list):
+                - Mot list cac so int theo dinh dang `(height, width) chua chieu cao va chieu
+                  rong cua dau ra cua cac lop convolutional predictor layers.
+            * min_scale (float, optional):
+                - He so ty le nho nhat cho cac anchor box va no thuoc layer predict thap nhat.
+                - He so nay phai > 0
+                - He so nay phai duoc chon sao cho viec tao ra cac anchorbox tuong ung co cung
+                  kich thuoc voi doi tuong can duoc phat hien.
+            * max_scale (float, optional):
+                - He so ty le lon nhat cho cac anchor box va no thuoc layer predict cao nhat. 
+                - Tat ca cac he so ty le cho cac anchor box cua cac layer predict o giua hai
+                  lop predict cao nhat va thap nhat se duoc noi suy tuyen tinh trong doan 
+                  tu [min_scale, max_scale]
+                - Ghi nho rang, he so ty le duoc noi suy tuyen tinh tu thu 2 tu cuoi cung se thuc su su la he so ty le cho layer predict cuoi cung, trong khi he so 
+                ty le cuoi cung se duoc su dung cho second box cua aspect ratios = 1 
+                trong layer predict cuoi cung, neu `two_boxes_for_ar1` duoc dat la `True`.
+            * scales (list, optional):
+                - Mot list cac phan tu type la float chua cac he so ty le duoc ap dung cho tung
+                  cac convolutional predictor layer. 
+                - List nay phai dai hon mot phan tu so voi so luong cac predict layers. 
+                - k phan tu dau tien la k cac he so ty le cho k layer predictor dau tien,
+                  trong khi phan tu cuoi cung duoc su dung cho second box co aspect ratio = 1
+                  trong layer predictor cuoi cung neu `two_boxes_for_ar1` duoc dat la true.
+                - He so ty le bo sung nay phai thoa man hai dieu kien sau, ke ca trong
+                  truong hop no khong duoc su dung: 
+                    + Neu list nay duoc truyen vao, thi no se ghi de len cac gia tri 
+                      min_scale va max_scale.
+                    + Tat ca cac phan tu he so ty le phai lon hon 0.
+            * aspect_ratios_global (list, optional):
+                - Mot list chua cac aspect ratio (ty le khung hinh) se duoc dung de tao ra cac
+                  anchor box.
+                - List nay se duoc su dung cho toan bo cac layer trong model.
+            * aspect_ratios_per_layer (list, optional):
+                - Mot list chua aspect ratio cho tung lop predictor layers.
+                - Dieu nay cho phep ban dat ty le khung hinh (aspect ratio) cho tung layer predictor
+                  rieng le, day la truong hop trien khai cua SSD300 goc.
+                - Neu list nay duoc truyen vao thi no se ghi de len `aspect_ratios_global`.
+            * two_boxes_for_ar1 (bool, optional):
+                - Chi lien quan den gia tri aspect ratio = 1.
+                - Se bi bo qua neu la truong hop khac
+                - Neu mang gia tri `True`, hai anchor box se duoc tao cho ty le khung hinh aspect
+                  ratio = 1.
+                  + Anchor box dau tien se duoc tao bang viec su dung scale cua lop tuong ung
+                  + Anchor box thu hai se duoc tao bang viec su dung gia tri trung binh hinh hoc cua 
+                    he so ty le scale cua layer dang xet va he so ty le cua layer tiep theo.
+            * steps (list, optional): 
+                - None hoac la mot danh sach co so luong phan tu bang voi so luong cua
+                  predictor layers.
+                - Cac phan tu co the la int/float
+                - Nhung con so nay dai dien cho viec moi lop du doan co bao nhieu pixels
+                  ngoai cac diem trung tam cua cac anchor box phai theo chieu doc va chieu
+                  ngang doc theo luoi khong gian cua hinh anh.
+                - Neu danh sach chua ints/floats, thi gia tri do se duoc su dung cho ca hai kich
+                  thuoc khong gian.
+                - Neu danh sach chua cac tuples cua hai ints/floats thi chung se dai dien cho
+                  (step_height, step_width)
+                - Neu ko co steps nao duoc cung cap, thi chung se duoc tinh toan sao cho cac
+                  diem trung tam cua anchor box se tao thanh mot luoi cac deu kich thuoc hinh
+                  anh.
+            * offsets (list, optional):
+                - None hoac la mot danh sach co so luong phan tu bang voi so luong cua
+                  predictor layers.
+                - Cac phan tu co the la float hoac la tuple cua floats.
+                - Nhung con so nay dai dien cho moi predictor layers co bao nhieu pixel tuyet
+                  doi, ma la mot phan cua kich thuoc step duoc chi dinh trong doi so steps.
+                - Neu list chua cac so float, thi cac gia tri do duoc su dung cho ca hai
+                  chieu khong gian. Neu danh sach co chua bo tuple cua floats hoac la ints
+                  thi chung dai dien cho (vertical_offset, horizontal_offset)
+                  Neu ko co offset duoc truyen vao thi chung se duoc mac dinh la 0.5 cho kich thuoc cua step (step size).
+            * clip_boxes (bool, optional):
+                - Neu la "true", gioi han toa do cua cac anchor box se nam trong ranh gioi
+                  cua hinh anh
+            * variances (list, optional):
+                - Mot list 4 so float > 0. Anchor box offset cho moi toa do se duoc chia cho
+                  gia tri variances tuong ung cua no.
+            * matching_type (str, optional):
+                - Co the la multi hoac la bipartite.
+                - Trong che do bipartite, mot ground truth box se duoc match voi 1 anchor
+                  box co do chong cheo IoU cao nhat
+                - Trong che do multi, ngoai viec ket hop bipartite noi tren, tat ca cac 
+                  anchor box co IoU trung hoac lon hon pos_iou_threshold se duoc matching
+                  voi ground truth box de su dung trong loss function.
+            * pos_iou_threshold (float, optional):
+                - nguong IoU duoc su dung de khop hop anchor box va ground truth box nhat dinh.
+            * neg_iou_limit (float, optional):
+                - do tuong giao toi da cho phep cua anchor box voi bat ky ground truth box duoc
+                  dan nhan la negative (vi du background). Neu anchor box khong phai la hop
+                  duong, cung ko phai la box am thi se duoc bo qua trong qua trinh dao tao.
+            * border_pixels (str, optional): How to treat the border pixels of the bounding boxes.
                 Can be 'include', 'exclude', or 'half'. If 'include', the border pixels belong
                 to the boxes. If 'exclude', the border pixels do not belong to the boxes.
                 If 'half', then one of each of the two horizontal and vertical borders belong
                 to the boxex, but not the other.
-            coords (str, optional): The box coordinate format to be used internally by the model (i.e. this is not the input format
-                of the ground truth labels). Can be either 'centroids' for the format `(cx, cy, w, h)` (box center coordinates, width,
-                and height), 'minmax' for the format `(xmin, xmax, ymin, ymax)`, or 'corners' for the format `(xmin, ymin, xmax, ymax)`.
-            normalize_coords (bool, optional): If `True`, the encoder uses relative instead of absolute coordinates.
-                This means instead of using absolute tartget coordinates, the encoder will scale all coordinates to be within [0,1].
-                This way learning becomes independent of the input image size.
-            background_id (int, optional): Determines which class ID is for the background class.
+            * coords (str, optional):
+                - Dinh dang toa do duoc su dung ben trong boi model (nghia la day ko phai dinh
+                dang dau vao cua ground truth labels).
+                - Co the la centroid voi dinh dang: cx, cy, w, h (toa do trung tam cua box,
+                chieu rong va chieu cao cua box)
+                - Co the la minmax (xmin, xmax, ymin, ymax) hoac cornner (goc) theo dinh
+                dang (xmin, ymin, xmax, ymax)
+            * normalize_coords (bool, optional):
+                - Neu la true, encoder se su dung toa do tuong doi thay vi toa do tuyet doi
+                Dieu nay co nghia la thay vi su dung toa do tuyet doi, encoder se chia lai
+                ty le cac toa do khong gian ve doan [0, 1].
+                - Cach hoc nay se tro nen doc lap voi kich thuoc hinh anh dau vao.
+            * background_id (int, optional):
+                - Xac dinh ID cho cac lop background
         '''
+
+        # Kich thuoc cua cac lop predictor
         predictor_sizes = np.array(predictor_sizes)
+
+        # Dinh hinh lai kich thuoc cua predictor size neu no khong o dinh dang mong muon
         if predictor_sizes.ndim == 1:
             predictor_sizes = np.expand_dims(predictor_sizes, axis=0)
 
         ##################################################################################
-        # Handle exceptions.
+        # Dua ra mot so ngoai le.
         ##################################################################################
 
+        # Phai truyen vao mot trong hai truong hop
+        # + hoac la truyen ca min_scale
+        # + hoac la truyen ca max_scale
         if (min_scale is None or max_scale is None) and scales is None:
-            raise ValueError("Either `min_scale` and `max_scale` or `scales` need to be specified.")
+            raise ValueError("Can phai chi dinh min_scale va max_scale hoac scales")
 
+        # Neu truyen vao scales
         if scales:
-            if (len(scales) != predictor_sizes.shape[0] + 1): # Must be two nested `if` statements since `list` and `bool` cannot be combined by `&`
-                raise ValueError("It must be either scales is None or len(scales) == len(predictor_sizes)+1, but len(scales) == {} and len(predictor_sizes)+1 == {}".format(len(scales), len(predictor_sizes)+1))
+            # Kiem tra neu scales ko bang so luong cac lop predictor + 1 (1 la scale
+            # cho ratio = 1)
+            if (len(scales) != predictor_sizes.shape[0] + 1):
+                raise ValueError("No phai thuoc mot trong hai truong hop, hoac la None hoac la len(scales) == len(predictor_sizes)+1, nhung len(scales) == {} va len(predictor_sizes)+1 == {}".format(len(scales), len(predictor_sizes)+1))
             scales = np.array(scales)
+            # Neu co bat ky gia tri scale nao <= 0
             if np.any(scales <= 0):
-                raise ValueError("All values in `scales` must be greater than 0, but the passed list of scales is {}".format(scales))
-        else: # If no list of scales was passed, we need to make sure that `min_scale` and `max_scale` are valid values.
-            if not 0 < min_scale <= max_scale:
-                raise ValueError("It must be 0 < min_scale <= max_scale, but it is min_scale = {} and max_scale = {}".format(min_scale, max_scale))
-
-        if not (aspect_ratios_per_layer is None):
-            if (len(aspect_ratios_per_layer) != predictor_sizes.shape[0]): # Must be two nested `if` statements since `list` and `bool` cannot be combined by `&`
-                raise ValueError("It must be either aspect_ratios_per_layer is None or len(aspect_ratios_per_layer) == len(predictor_sizes), but len(aspect_ratios_per_layer) == {} and len(predictor_sizes) == {}".format(len(aspect_ratios_per_layer), len(predictor_sizes)))
-            for aspect_ratios in aspect_ratios_per_layer:
-                if np.any(np.array(aspect_ratios) <= 0):
-                    raise ValueError("All aspect ratios must be greater than zero.")
+                raise ValueError("Tat ca cac gia tri trong `scales` phai lon hon 0, nhung list scale duoc truyen vao la: {}".format(scales))
         else:
+            # Neu ko co list scale nao duoc truyen vao thi chung ta can phai dam bao rang
+            # min_scale va max_scale phai la cac gia tri hop le
+            if not 0 < min_scale <= max_scale:
+                raise ValueError("Gia tri nay phai thoa man 0 < min_scale <= max_scale, nhung no lai la min_scale = {} va max_scale = {}".format(min_scale, max_scale))
+
+        # Neu aspect ratio cho tung lop duoc truyen vao
+        if not (aspect_ratios_per_layer is None):
+            # Neu so luong cac ratio cho tung lop khong bang so luong cac lop predictor layers
+            if (len(aspect_ratios_per_layer) != predictor_sizes.shape[0]):
+                raise ValueError("No phai thuoc mot trong hai truong hop aspect_ratios_per_layer la None hoac len(aspect_ratios_per_layer) == len(predictor_sizes), nhung len(aspect_ratios_per_layer) == {} and len(predictor_sizes) == {}".format(len(aspect_ratios_per_layer), len(predictor_sizes)))
+            # Lap qua tung ratios dat cho tung lop predictor layers
+            for aspect_ratios in aspect_ratios_per_layer:
+                # Neu co bat ky ratio nao <= 0 thi no se dua ra ngoai le
+                if np.any(np.array(aspect_ratios) <= 0):
+                    raise ValueError("Tat ca cac gia tri aspect ratios phai lon hon 0!")
+        else:
+            # Neu gia tri aspect ratios global khong duoc truyen vao
             if (aspect_ratios_global is None):
-                raise ValueError("At least one of `aspect_ratios_global` and `aspect_ratios_per_layer` must not be `None`.")
+                raise ValueError("It nhat mot trong `aspect_ratios_global` va `aspect_ratios_per_layer` khong duoc mang gia tri `None`.")
+            # Neu co bat ky gia tri aspect ratios global nao ma <= 0
             if np.any(np.array(aspect_ratios_global) <= 0):
-                raise ValueError("All aspect ratios must be greater than zero.")
+                raise ValueError("Tat ca cac gia tri aspect ratios phai lon hon 0!")
 
+        # Neu so luong variances khac 4
         if len(variances) != 4:
-            raise ValueError("4 variance values must be pased, but {} values were received.".format(len(variances)))
+            raise ValueError("4 gia tri variance phai duoc truyen vao, nhung {} gia tri da duoc nhan".format(len(variances)))
+        # Chuyen variances ve dang array
         variances = np.array(variances)
+
+        # Neu co bat ky gia tri variances nao nho hon 0
         if np.any(variances <= 0):
-            raise ValueError("All variances must be >0, but the variances given are {}".format(variances))
+            raise ValueError("Tat ca cac gia tri variances >0, nhung cac gia tri variances duoc dua ra la: {}".format(variances))
 
+        # Neu cac gia tri toa do khong theo 1 trong ba dinh dang sau thi dua ra ngoai le
         if not (coords == 'minmax' or coords == 'centroids' or coords == 'corners'):
-            raise ValueError("Unexpected value for `coords`. Supported values are 'minmax', 'corners' and 'centroids'.")
+            raise ValueError("Day la gia tri khong hop le doi voi `coords`. Cac gia tri duoc ho tro do la 'minmax', 'corners' va 'centroids'.")
 
+        # Neu steps ko None va kich thuoc cua step ko bang so luong cac lop predictor layers
         if (not (steps is None)) and (len(steps) != predictor_sizes.shape[0]):
-            raise ValueError("You must provide at least one step value per predictor layer.")
+            raise ValueError("Ban can phai cung cap it nhat mot gia tri steps cho moi lop predictor")
 
+        # Neu offset duoc truyen vao va so luong offset ko bang so luong cac lop predictor layers
         if (not (offsets is None)) and (len(offsets) != predictor_sizes.shape[0]):
-            raise ValueError("You must provide at least one offset value per predictor layer.")
+            raise ValueError("Ban can cung cap it nhat mot gia tri offsets cho moi lop predictor")
 
         ##################################################################################
-        # Set or compute members.
+        # Thiet lap va tinh toan mot so yeu to
         ##################################################################################
 
+        # Chieu cao cua hinh anh
         self.img_height = img_height
+
+        # Chieu rong cua hinh anh
         self.img_width = img_width
-        self.n_classes = n_classes + 1 # + 1 for the background class
+
+        # So luong cac class bao gom ca background class
+        self.n_classes = n_classes + 1
+
+        # So luong cac predictor layers
         self.predictor_sizes = predictor_sizes
+
+        # Cac he so ty le min, max scale
         self.min_scale = min_scale
         self.max_scale = max_scale
-        # If `scales` is None, compute the scaling factors by linearly interpolating between
-        # `min_scale` and `max_scale`. If an explicit list of `scales` is given, however,
-        # then it takes precedent over `min_scale` and `max_scale`.
+
+        # Neu scale la None, hay tinh cac scale bang cach tinh noi suy tuyen tinh giua
+        # min_scale va max_scale. Tuy nhien neu mot list ro rang cac scale duoc truyen vao
+        # thi cac gia tri min_scale va max_scale se duoc ghi de.
+
         if (scales is None):
             self.scales = np.linspace(self.min_scale, self.max_scale, len(self.predictor_sizes)+1)
         else:
-            # If a list of scales is given explicitly, we'll use that instead of computing it from `min_scale` and `max_scale`.
+            # Neu mot list cac scale duoc truyen vao mot cach ro rang, chung ta 
+            # se thay no vao thay vi tinh toan min_scale hoac max_scale.
             self.scales = scales
-        # If `aspect_ratios_per_layer` is None, then we use the same list of aspect ratios
-        # `aspect_ratios_global` for all predictor layers. If `aspect_ratios_per_layer` is given,
-        # however, then it takes precedent over `aspect_ratios_global`.
+        
+        # Neu aspect_ratios_per_layer = None, thi chung ta se su dung cac ratio
+        # global cho tat ca cac lop du doan, tuy nhien viec su dung cac ratios cho tung
+        # layer se huu dung hon rat nhieu
         if (aspect_ratios_per_layer is None):
+            # Clone ra cac aspect_ratios_global tuong ung bang so luong cac predictor layers
+            # vi du: [[None]] * 4 = [[None], [None], [None], [None]]
             self.aspect_ratios = [aspect_ratios_global] * predictor_sizes.shape[0]
         else:
-            # If aspect ratios are given per layer, we'll use those.
+            # Neu cac aspect ratios duoc dua ra cho tung layer, chung ta se su dung ratios do
             self.aspect_ratios = aspect_ratios_per_layer
+
+        # Hai box duoc tao ra khi aspect ratios = 1
         self.two_boxes_for_ar1 = two_boxes_for_ar1
+
+        # Neu steps ma duoc truyen vao
         if not (steps is None):
             self.steps = steps
         else:
+            # Tao ra mot mang chua so luong None bang so luong lop predictor layer
             self.steps = [None] * predictor_sizes.shape[0]
+
+        # neu offsets duoc truyen vao
         if not (offsets is None):
             self.offsets = offsets
         else:
+            # Tao ra mot mang chua so luong None bang so luong lop predictor layer
             self.offsets = [None] * predictor_sizes.shape[0]
+
+        # bool cho phep dua cac bbx nam dung trong ranh gioi cua hinh anh
         self.clip_boxes = clip_boxes
+        # mang variances giup chuan hoa cac toa do cua bbx
         self.variances = variances
+        # option cho phep chi nhan mot bbx co IoU cao nhat voi ground truth hoac lay
+        # nhieu hon cac bbx co nguong IoU cao hon mot nguong nao do
         self.matching_type = matching_type
+        # iou cho cac positive
         self.pos_iou_threshold = pos_iou_threshold
+        # ioi cho cac negative
         self.neg_iou_limit = neg_iou_limit
         self.border_pixels = border_pixels
         self.coords = coords
         self.normalize_coords = normalize_coords
         self.background_id = background_id
 
-        # Compute the number of boxes per spatial location for each predictor layer.
-        # For example, if a predictor layer has three different aspect ratios, [1.0, 0.5, 2.0], and is
-        # supposed to predict two boxes of slightly different size for aspect ratio 1.0, then that predictor
-        # layer predicts a total of four boxes at every spatial location across the feature map.
+        # Tinh so luong anchor box tren moi vi tri khong gian cho moi lop predictor layers
+        # Vi du: neu mot lop predictor co ba ty le khung hinh khac nhau la [1.0, 0.5, 2.0]
+        # va duoc cho la du doan hai box co kich thuoc hoi khac nhau cho ty le khung hinh
+        # ratios = 1.0 thi lop du doan do du doan tong cong bon box o moi ko gian vi tri
+        # tren ban do tinh nang
+
+        # Neu ratios cho tung lop duoc truyen vao
         if not (aspect_ratios_per_layer is None):
+            # mang quan ly so luong cac box
             self.n_boxes = []
+            # Lap qua cac danh sach ratios cho tung lop predictor layers
             for aspect_ratios in aspect_ratios_per_layer:
+                # neu 1 nam trong aspect ratios va co 2 box duoc tao ra tu ratios = 1
                 if (1 in aspect_ratios) & two_boxes_for_ar1:
+                    # so luong box bang so luong cac ratios + 1
                     self.n_boxes.append(len(aspect_ratios) + 1)
                 else:
+                    # Neu ko thi so luong box chi bang so luong cac ratios cho tung
+                    # predictor layers
                     self.n_boxes.append(len(aspect_ratios))
         else:
+            # Doi voi truong hop ratios global thi van tinh mot cach tuong tu
             if (1 in aspect_ratios_global) & two_boxes_for_ar1:
                 self.n_boxes = len(aspect_ratios_global) + 1
             else:
                 self.n_boxes = len(aspect_ratios_global)
 
         ##################################################################################
-        # Compute the anchor boxes for each predictor layer.
+        # Tinh toan cac Anchor box cho moi predictor layers
         ##################################################################################
 
-        # Compute the anchor boxes for each predictor layer. We only have to do this once
-        # since the anchor boxes depend only on the model configuration, not on the input data.
-        # For each predictor layer (i.e. for each scaling factor) the tensors for that layer's
-        # anchor boxes will have the shape `(feature_map_height, feature_map_width, n_boxes, 4)`.
+        # Tinh toan cac anchor box cho moi lop predictor. Chung ta phai thuc hien viec
+        # nay mot lan vi cac anchor box chi phu thuoc vao cau hinh model, ko phu
+        # thuoc vao du lieu dau vao. Doi voi moi predictor layer (tuc la doi voi moi he
+        # so ty le trong scales), cac tensor cho cac lop anchor box se co hinh dang la
+        # `(feature_map_height, feature_map_width, n_boxes, 4)`.
 
-        self.boxes_list = [] # This will store the anchor boxes for each predicotr layer.
+        # Dieu nay luu tru cac anchor box cho moi lop predictor
+        self.boxes_list = []
 
-        # The following lists just store diagnostic information. Sometimes it's handy to have the
-        # boxes' center points, heights, widths, etc. in a list.
-        self.wh_list_diag = [] # Box widths and heights for each predictor layer
-        self.steps_diag = [] # Horizontal and vertical distances between any two boxes for each predictor layer
-        self.offsets_diag = [] # Offsets for each predictor layer
-        self.centers_diag = [] # Anchor box center points as `(cy, cx)` for each predictor layer
+        # Cac danh sach sau day chi luu tru thong tin chan doan. Doi khi that huu ich khi co
+        # cac diem trung tam, chieu cao, chieu rong, ... , cua cac box trong list
+        
+        # Chieu rong va chieu cao cho cac box cua moi lop predictor layer
+        self.wh_list_diag = []
 
-        # Iterate over all predictor layers and compute the anchor boxes for each one.
+        # Khoang cach ngang doc giua hai hop bat ky cho moi lop predictor
+        self.steps_diag = []
+
+        # Offsets cho moi lop predictor
+        self.offsets_diag = []
+
+        # Cac center points voi dinh dang la (cx, cy) cho moi lop predictor layers
+        self.centers_diag = []
+
+        # lap qua tat ca cac lop predictor va tinh toan cac anchor box cho moi layer
         for i in range(len(self.predictor_sizes)):
+
             boxes, center, wh, step, offset = self.generate_anchor_boxes_for_layer(feature_map_size=self.predictor_sizes[i],
-                                                                                   aspect_ratios=self.aspect_ratios[i],
-                                                                                   this_scale=self.scales[i],
-                                                                                   next_scale=self.scales[i+1],
-                                                                                   this_steps=self.steps[i],
-                                                                                   this_offsets=self.offsets[i],
-                                                                                   diagnostics=True)
+                aspect_ratios=self.aspect_ratios[i],
+                this_scale=self.scales[i],
+                next_scale=self.scales[i+1],
+                this_steps=self.steps[i],
+                this_offsets=self.offsets[i],
+                diagnostics=True)
             self.boxes_list.append(boxes)
             self.wh_list_diag.append(wh)
             self.steps_diag.append(step)
@@ -426,69 +508,107 @@ class SSDInputEncoder:
                                         this_offsets=None,
                                         diagnostics=False):
         '''
-        Computes an array of the spatial positions and sizes of the anchor boxes for one predictor layer
-        of size `feature_map_size == [feature_map_height, feature_map_width]`.
+        Tinh toan mot array cac vi tri va kich thuoc ko gian cua cac anchor box cho 1 lop
+        predictor layer co kich thuoc `feature_map_size == [feature_map_height, feature_map_width]`.
 
-        Arguments:
-            feature_map_size (tuple): A list or tuple `[feature_map_height, feature_map_width]` with the spatial
-                dimensions of the feature map for which to generate the anchor boxes.
-            aspect_ratios (list): A list of floats, the aspect ratios for which anchor boxes are to be generated.
-                All list elements must be unique.
-            this_scale (float): A float in [0, 1], the scaling factor for the size of the generate anchor boxes
-                as a fraction of the shorter side of the input image.
-            next_scale (float): A float in [0, 1], the next larger scaling factor. Only relevant if
-                `self.two_boxes_for_ar1 == True`.
-            diagnostics (bool, optional): If true, the following additional outputs will be returned:
-                1) A list of the center point `x` and `y` coordinates for each spatial location.
-                2) A list containing `(width, height)` for each box aspect ratio.
-                3) A tuple containing `(step_height, step_width)`
-                4) A tuple containing `(offset_height, offset_width)`
-                This information can be useful to understand in just a few numbers what the generated grid of
-                anchor boxes actually looks like, i.e. how large the different boxes are and how dense
-                their spatial distribution is, in order to determine whether the box grid covers the input images
-                appropriately and whether the box sizes are appropriate to fit the sizes of the objects
-                to be detected.
+        Cac doi so:
+            * feature_map_size (tuple):
+                - Mot list hoac tuple `[feature_map_height, feature_map_width]`
+                  voi cac kich thuoc ko gian ko gian ban do tinh nang de tao cac anchor box
+            * aspect_ratios (list):
+                - Mot danh sach cac so float, chua cac ty le khung hinh ratios ma cac anchor
+                  box se duoc tao. Tat ca cac phan tu nay phai mang gia tri duy nhat.
+            * this_scale (float):
+                - Mot so float trong [0, 1], day la he so ty le hien tai de tao ra anchor box
+            * next_scale (float): 
+                - Mot float trong [0, 1], he so ty le lon hon tiep theo. chi lien quan den
+                  truong hop `self.two_boxes_for_ar1 == True`.
+            * diagnostics (bool, optional): Neu true, cac dau ra bo sung sau se duoc tra ve:
+                1) Mot danh sach cac toa do center point `x` va `y` for each spatial location cho tung vi tri ko gian.
+                2) Mot danh sach gom`(width, height)` cho moi box tuong ung voi aspect ratios
+                3) Mot tuple chua `(step_height, step_width)`
+                4) Mot tuple chua `(offset_height, offset_width)`
+                Thong tin nay co the huu ich de chi hieu trong mot vai con so, tuc la cai
+                ma cac luoi anchor box duoc ta ra trong nhu the nao, nghia la cac box khac nhau
+                lon nhu the nao, va phan bo khong gian cua chung day dac nhu the nao,
+                de xem luoi cac box co bao phu duoc duoc cac doi tuong trong hinh anh dau
+                vao mot cach thich hop hay khong.
 
         Returns:
-            A 4D Numpy tensor of shape `(feature_map_height, feature_map_width, n_boxes_per_cell, 4)` where the
-            last dimension contains `(xmin, xmax, ymin, ymax)` for each anchor box in each cell of the feature map.
+            Mot tensor numpy 4D voi kich thuoc
+            `(feature_map_height, feature_map_width, n_boxes_per_cell, 4)` trong do kich thuoc
+            cuoi cung chua xmin, xmax, ymin, ymax cho moi anchor box trong moi o cua ban do 
+            tinh nang.
         '''
-        # Compute box width and height for each aspect ratio.
+        # Tinh chieu rong va chieu cao cua cac box cho tung ty le khung hinh aspect ratio
 
-        # The shorter side of the image will be used to compute `w` and `h` using `scale` and `aspect_ratios`.
+        # mat ngan hon cua hinh anh se duoc su dung de tinh toan w va h bang cach su dung
+        # scale va aspect ratios
+
+        # lay canh ngan hon tu hinh anh dau vao
         size = min(self.img_height, self.img_width)
-        # Compute the box widths and and heights for all aspect ratios
+
+        # Tinh toan chieu rong va chieu cao cho cac box cho tat ca cac aspect ratios
         wh_list = []
+
+        # Lap qua cac ty le khung hinh trong danh sach aspect ratio
         for ar in aspect_ratios:
+
+            # Neu aspect ratios = 1
             if (ar == 1):
-                # Compute the regular anchor box for aspect ratio 1.
+                # Tinh toan cac anchor box voi aspect ratio = 1
+                # bang cach su dung scale cua predictor layers hien tai nhan size
+                # (chieu nho hon trong hai chieu rong va cao cua hinh anh dau vao)
                 box_height = box_width = this_scale * size
+                # them chieu rong va chieu cao cua box vao trong mang quan ly wh_list
                 wh_list.append((box_width, box_height))
+                
+                # neu cho phep tao 2 anchor box voi aspect ratios = 1
                 if self.two_boxes_for_ar1:
-                    # Compute one slightly larger version using the geometric mean of this scale value and the next.
+                    # Tinh toan mot phien ban lon hon mot chut bang cach su dung
+                    # gia tri trung binh hinh hoc cua gia tri scale cua lop predict
+                    # layer hien tai nhan voi scale cua lop predictor layer tiep theo
+                    # nhan voi canh nho hon (trong hai canh rong va cao) cua hinh anh dau vao
                     box_height = box_width = np.sqrt(this_scale * next_scale) * size
+                    # them chieu rong va chieu cao cua box vao trong mang quan ly wh_list
                     wh_list.append((box_width, box_height))
             else:
+                # Neu aspect ratios ko bang gia tri 1 thi tinh mot cach binh thuong chieu cao
+                # va chieu rong cua cac anchor box
                 box_width = this_scale * size * np.sqrt(ar)
                 box_height = this_scale * size / np.sqrt(ar)
                 wh_list.append((box_width, box_height))
+
+        # Chuyen wh_list ve dang numpy array
         wh_list = np.array(wh_list)
+        # So luong cac box
         n_boxes = len(wh_list)
 
-        # Compute the grid of box center points. They are identical for all aspect ratios.
+        # Tinh toan luoi cua cac box center points. Chung giong het nhau cho tat ca cac
+        # ty le khung hinh
 
-        # Compute the step sizes, i.e. how far apart the anchor box center points will be vertically and horizontally.
+        # Tinh toan step size, tuc la cac diem center cua cac anchor box cach nhau bao xa
+        # va theo chieu ngang
         if (this_steps is None):
+            # step theo chieu doc
             step_height = self.img_height / feature_map_size[0]
+            # step theo chieu ngang
             step_width = self.img_width / feature_map_size[1]
         else:
+            # neu this_steps co chua list hoac tuple va kich thuoc cua this_steps la 2
             if isinstance(this_steps, (list, tuple)) and (len(this_steps) == 2):
+                # step theo chieu doc la this_step[0]
                 step_height = this_steps[0]
+                # step theo chieu ngang la this_step[1]
                 step_width = this_steps[1]
             elif isinstance(this_steps, (int, float)):
                 step_height = this_steps
                 step_width = this_steps
-        # Compute the offsets, i.e. at what pixel values the first anchor box center point will be from the top and from the left of the image.
+        
+        # Tinh toan cac do lech (offset), tuc la o cac gia tri pixel nao, diem trung tam
+        # cua anchor box dau tien se o tren cung va tu ben trai cua hinh anh
+
+        # neu this_offsets la None
         if (this_offsets is None):
             offset_height = 0.5
             offset_width = 0.5
@@ -499,26 +619,32 @@ class SSDInputEncoder:
             elif isinstance(this_offsets, (int, float)):
                 offset_height = this_offsets
                 offset_width = this_offsets
-        # Now that we have the offsets and step sizes, compute the grid of anchor box center points.
+
+        # bay h chung ta da co offset va step sizes, tinh toan luoi toa do cac center point cua
+        # cac anchor box
         cy = np.linspace(offset_height * step_height, (offset_height + feature_map_size[0] - 1) * step_height, feature_map_size[0])
         cx = np.linspace(offset_width * step_width, (offset_width + feature_map_size[1] - 1) * step_width, feature_map_size[1])
+        # vi du cx=5, cy=6 => np.meshgrid(cx, cy): [array([[5]]), array([[6]])]
         cx_grid, cy_grid = np.meshgrid(cx, cy)
-        cx_grid = np.expand_dims(cx_grid, -1) # This is necessary for np.tile() to do what we want further down
-        cy_grid = np.expand_dims(cy_grid, -1) # This is necessary for np.tile() to do what we want further down
 
-        # Create a 4D tensor template of shape `(feature_map_height, feature_map_width, n_boxes, 4)`
-        # where the last dimension will contain `(cx, cy, w, h)`
+        # Điều này là cần thiết để np.tile () thực hiện những gì chúng tôi muốn tiếp tục
+        cx_grid = np.expand_dims(cx_grid, -1)
+        # Điều này là cần thiết để np.tile () thực hiện những gì chúng tôi muốn tiếp tục
+        cy_grid = np.expand_dims(cy_grid, -1)
+
+        # Tao mot template tensor 4D co hinh dang `(feature_map_height, feature_map_width, n_boxes, 4)`
+        # trong do kich thuoc cuoi cung se chua `(cx, cy, w, h)`
         boxes_tensor = np.zeros((feature_map_size[0], feature_map_size[1], n_boxes, 4))
 
-        boxes_tensor[:, :, :, 0] = np.tile(cx_grid, (1, 1, n_boxes)) # Set cx
-        boxes_tensor[:, :, :, 1] = np.tile(cy_grid, (1, 1, n_boxes)) # Set cy
-        boxes_tensor[:, :, :, 2] = wh_list[:, 0] # Set w
-        boxes_tensor[:, :, :, 3] = wh_list[:, 1] # Set h
+        boxes_tensor[:, :, :, 0] = np.tile(cx_grid, (1, 1, n_boxes)) # Thiet lap cho cx
+        boxes_tensor[:, :, :, 1] = np.tile(cy_grid, (1, 1, n_boxes)) # Thiet lap cho cy
+        boxes_tensor[:, :, :, 2] = wh_list[:, 0] # Thiet lap cho w
+        boxes_tensor[:, :, :, 3] = wh_list[:, 1] # Thiet lap cho h
 
-        # Convert `(cx, cy, w, h)` to `(xmin, ymin, xmax, ymax)`
+        # chuyen doi tu dinh dang `(cx, cy, w, h)` thanh dinh dang `(xmin, ymin, xmax, ymax)`
         boxes_tensor = convert_coordinates(boxes_tensor, start_index=0, conversion='centroids2corners')
 
-        # If `clip_boxes` is enabled, clip the coordinates to lie within the image boundaries
+        # Neu clip_boxes duoc bat hay cat toa do de cho cac bbx nam trong ranh gioi cua hinh anh
         if self.clip_boxes:
             x_coords = boxes_tensor[:,:,:,[0, 2]]
             x_coords[x_coords >= self.img_width] = self.img_width - 1
@@ -529,17 +655,18 @@ class SSDInputEncoder:
             y_coords[y_coords < 0] = 0
             boxes_tensor[:,:,:,[1, 3]] = y_coords
 
-        # `normalize_coords` is enabled, normalize the coordinates to be within [0,1]
+        # Neu normalize_coords duoc bat thi hay chuan hoa toa do cua cac bbx nam trong doan [0, 1]
         if self.normalize_coords:
             boxes_tensor[:, :, :, [0, 2]] /= self.img_width
             boxes_tensor[:, :, :, [1, 3]] /= self.img_height
 
-        # TODO: Implement box limiting directly for `(cx, cy, w, h)` so that we don't have to unnecessarily convert back and forth.
+        # TODO: Trien khai cac hop gioi han truc tiep cho cx, cy, w, h de chung ta ko phai chuyen
+        # doi qua lai mot cach khong can thiet
         if self.coords == 'centroids':
-            # Convert `(xmin, ymin, xmax, ymax)` back to `(cx, cy, w, h)`.
+            # Chuyen doi `(xmin, ymin, xmax, ymax)` ve dang `(cx, cy, w, h)`.
             boxes_tensor = convert_coordinates(boxes_tensor, start_index=0, conversion='corners2centroids', border_pixels='half')
         elif self.coords == 'minmax':
-            # Convert `(xmin, ymin, xmax, ymax)` to `(xmin, xmax, ymin, ymax).
+            # Chuyen doi dinh dang `(xmin, ymin, xmax, ymax)` ve dang `(xmin, xmax, ymin, ymax).
             boxes_tensor = convert_coordinates(boxes_tensor, start_index=0, conversion='corners2minmax', border_pixels='half')
 
         if diagnostics:

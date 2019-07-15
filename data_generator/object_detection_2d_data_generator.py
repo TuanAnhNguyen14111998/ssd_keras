@@ -1,19 +1,6 @@
 '''
 A data generator for 2D object detection.
 
-Copyright (C) 2018 Pierluigi Ferrari
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
 '''
 
 from __future__ import division
@@ -217,21 +204,24 @@ class DataGenerator:
 
     def load_hdf5_dataset(self, verbose=True):
         '''
-        Loads an HDF5 dataset that is in the format that the `create_hdf5_dataset()` method
-        produces.
+        Tai mot tap du lieu HDF5 theo dinh dang ma phuong thuc create_hdf5_dataset()` tao ra
 
         Arguments:
-            verbose (bool, optional): If `True`, prints out the progress while loading
-                the dataset.
+            verbose (bool, optional): Neu true se in ra tien trinh khi tai bo du lieu
 
         Returns:
             None.
         '''
 
+        # Doc du lieu tu file HDF5
         self.hdf5_dataset = h5py.File(self.hdf5_dataset_path, 'r')
+        # Kich thuoc bo du lieu
         self.dataset_size = len(self.hdf5_dataset['images'])
-        self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32) # Instead of shuffling the HDF5 dataset or images in memory, we will shuffle this index list.
+        # Thay vi xao tron bo du lieu HDF5 hoac hinh anh trong bo nho, chung toi se
+        # xao tron du lieu bang chi muc nay
+        self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32)
 
+        # Neu co tuy chon load image vao bo nho
         if self.load_images_into_memory:
             self.images = []
             if verbose: tr = trange(self.dataset_size, desc='Loading images into memory', file=sys.stdout)
@@ -273,81 +263,120 @@ class DataGenerator:
                   ret=False,
                   verbose=True):
         '''
-        Arguments:
-            images_dir (str): The path to the directory that contains the images.
-            labels_filename (str): The filepath to a CSV file that contains one ground truth bounding box per line
-                and each line contains the following six items: image file name, class ID, xmin, xmax, ymin, ymax.
-                The six items do not have to be in a specific order, but they must be the first six columns of
-                each line. The order of these items in the CSV file must be specified in `input_format`.
-                The class ID is an integer greater than zero. Class ID 0 is reserved for the background class.
-                `xmin` and `xmax` are the left-most and right-most absolute horizontal coordinates of the box,
-                `ymin` and `ymax` are the top-most and bottom-most absolute vertical coordinates of the box.
-                The image name is expected to be just the name of the image file without the directory path
-                at which the image is located.
-            input_format (list): A list of six strings representing the order of the six items
-                image file name, class ID, xmin, xmax, ymin, ymax in the input CSV file. The expected strings
-                are 'image_name', 'xmin', 'xmax', 'ymin', 'ymax', 'class_id'.
-            include_classes (list, optional): Either 'all' or a list of integers containing the class IDs that
-                are to be included in the dataset. If 'all', all ground truth boxes will be included in the dataset.
-            random_sample (float, optional): Either `False` or a float in `[0,1]`. If this is `False`, the
-                full dataset will be used by the generator. If this is a float in `[0,1]`, a randomly sampled
-                fraction of the dataset will be used, where `random_sample` is the fraction of the dataset
-                to be used. For example, if `random_sample = 0.2`, 20 precent of the dataset will be randomly selected,
-                the rest will be ommitted. The fraction refers to the number of images, not to the number
-                of boxes, i.e. each image that will be added to the dataset will always be added with all
-                of its boxes.
-            ret (bool, optional): Whether or not to return the outputs of the parser.
-            verbose (bool, optional): If `True`, prints out the progress for operations that may take a bit longer.
+        Cac doi so:
+            images_dir (str): Duong dan den thu muc chua hinh anh.
+            labels_filename (str): filepath cho mot tep CSV chua ground truth bounding box
+                tren moi dong, va moi dong se chua 6 muc sau: ten file hinh anh, classID, xmin,
+                xmax, ymin, ymax.
+                Sau muc nay khong phai theo thu tu cu the, nhung chung phai la 6 cot dau tien
+                cua moi dong.
+                Thu tu cac tep nay trong CSV phai duoc chi dinh trong input_format.
+                ID la mot so int > 0. Class ID 0 chi danh rieng cho class background.
+                `xmin` va `xmax` la cac toa do ngang ben trai va ben phai nhat cua bbx.
+                `ymin` va `ymax` la toa do doc tuyet doi nhat tren cung va duoi cung cua bbx.
+                Ten hinh anh du kien se chi la ten cua tep hinh anh ma khong co duong dan thu muc
+                ma hinh anh se duoc dat.
+            input_format (list): Mot list 6 strings bieu dien thu tu cua 6 items cua hinh anh bao
+                gom: ten tep hinh anh, classID, xmin, xmax, ymin, ymax, va classid.
+            include_classes (list, optional): Hoac la all hoac la list cac so int chua cac ID
+                cua cac class se duoc bao gom trong dataset. Neu la all, tat cac cac 
+                ground truth boxes se duoc bao gom trong dataset.
+            random_sample (float, optional): Hoac la False hoac la mot mang float [0, 1].
+                Neu day la false, bo du lieu day du se duoc su dung boi trinh tao du lieu (data 
+                generator). Neu day la so float [0, 1], mot phan duoc lay mau ngau nhien,
+                cua tap du lieu se duoc su dung, trong do 'random_sample' la phan cua tap du 
+                lieu duoc su dung. vi du, neu `random_sample = 0.2`, 20 phan tram cua bo du lieu se duoc chon, phan con lai se bi bo qua. The fraction de cap den so luong hinh anh,
+                khong phai so luong box, tuc la moi hinh anh se duoc them vao bo du lieu se
+                luon duoc them vao voi cac box cua no.
+            ret (bool, optional): Co hay khong tra ve ket qua dau ra cua trinh phan tich cu phap.
+            verbose (bool, optional): Neu true se in ra tien trinh cho cac hoat dong, va dieu
+            nay co the lam lau qua trinh hon mot chut.
 
         Returns:
-            None by default, optionally lists for whichever are available of images, image filenames, labels, and image IDs.
+            Khong co mac dinh, list tuy chon cho bat ky hinh anh nao co san, ten tep hinh anh, labels, va ID cua hinh anh.
         '''
 
-        # Set class members.
+        # Thiet lap cac thanh phan cua mot class
+
+        # duong dan den thu muc chua hinh anh
         self.images_dir = images_dir
+
+        # duong dan den file csv
         self.labels_filename = labels_filename
-        self.input_format = input_format
+
+        # mot list gom 6 yeu to: xmin, ymin, xmax, ymax, classID
+        self.input_format = input_format # type: list
+
+        # Co bao gom class khong
         self.include_classes = include_classes
 
-        # Before we begin, make sure that we have a labels_filename and an input_format
+        # Truoc khi bat dau, hay dam bao rang labels_filename va input_format khong phai
+        # la None
         if self.labels_filename is None or self.input_format is None:
-            raise ValueError("`labels_filename` and/or `input_format` have not been set yet. You need to pass them as arguments.")
+            raise ValueError("`labels_filename` va/hoac `input_format` chua duoc truyen vao. Ban can phai truyen vao chung voi cac gia tri phu hop.")
 
-        # Erase data that might have been parsed before
+        # Xoa cac du lieu co the da duoc phan tich cu phap truoc do
         self.filenames = []
         self.image_ids = []
         self.labels = []
 
-        # First, just read in the CSV file lines and sort them.
+        # Dau tien, chi can doc cac dong cua tep CSV va sap xep chung
 
+        # mang luu du lieu
         data = []
 
+        # mo file csv va thuc hien doc file
         with open(self.labels_filename, newline='') as csvfile:
             csvread = csv.reader(csvfile, delimiter=',')
-            next(csvread) # Skip the header row.
-            for row in csvread: # For every line (i.e for every bounding box) in the CSV file...
-                if self.include_classes == 'all' or int(row[self.input_format.index('class_id')].strip()) in self.include_classes: # If the class_id is among the classes that are to be included in the dataset...
-                    box = [] # Store the box class and coordinates here
-                    box.append(row[self.input_format.index('image_name')].strip()) # Select the image name column in the input format and append its content to `box`
-                    for element in self.labels_output_format: # For each element in the output format (where the elements are the class ID and the four box coordinates)...
-                        box.append(int(row[self.input_format.index(element)].strip())) # ...select the respective column in the input format and append it to `box`.
+            # bo qua hang tieu de
+            next(csvread)
+            # Doi voi dong (nghia la cho moi bounding box) trong tep CSV
+            for row in csvread:
+                # Neu co bao gom tat cac cac class va lay chi so class_id tuong ung trong
+                # input_format.
+                # Neu class_id nam trong so cac class duoc bao gom trong dataset:
+                if self.include_classes == 'all' or int(row[self.input_format.index('class_id')].strip()) in self.include_classes:
+
+                    # Luu tru cac box class va cac toa do tai day
+                    box = []
+                    # Chon cot chua ten cua hinh anh trong dinh dang dau vao input_format
+                    # va noi dung cua no vao trong box
+                    box.append(row[self.input_format.index('image_name')].strip())
+                    # Doi voi moi thanh phan o dinh dang dau ra (trong do co cac phan tu la classID
+                    # va 4 toa do cua bbx)
+                    for element in self.labels_output_format:
+                        # Chon cac cot tuong ung voi dinh dang dau vao va noi no cho box.
+                        box.append(int(row[self.input_format.index(element)].strip()))
                     data.append(box)
 
-        data = sorted(data) # The data needs to be sorted, otherwise the next step won't give the correct result
+        # Du lieu can duoc sap xep, neu khong thi buoc tiep theo se khong cho ket qua chinh xac
+        data = sorted(data)
+        # Bay gio chung ta da dam bao rang du lieu duoc sap xep theo ten tep, chung toi co the bien
+        # dich cac danh sach mau vi du va nhan thuc te.
 
-        # Now that we've made sure that the data is sorted by file names,
-        # we can compile the actual samples and labels lists
+        # Hinh anh hien tai ma chung toi dang thu thap cac ground truth boxes
+        current_file = data[0][0]
 
-        current_file = data[0][0] # The current image for which we're collecting the ground truth boxes
-        current_image_id = data[0][0].split('.')[0] # The image ID will be the portion of the image name before the first dot.
-        current_labels = [] # The list where we collect all ground truth boxes for a given image
+        # ID hinh anh se la mot phan cua ~ tuc la bo duoi jpg tu ten file hinh anh
+        current_image_id = data[0][0].split('.')[0]
+
+        # List noi chung toi thu thap tat ca cac ground truth boxes cho mot hinh anh nhat dinh
+        current_labels = []
         add_to_dataset = False
+
         for i, box in enumerate(data):
 
-            if box[0] == current_file: # If this box (i.e. this line of the CSV file) belongs to the current image file
+            # i la index va box la data
+            # Neu box nay (nghia la dong nay cua tep csv) thuoc ve hinh anh hien tai
+            # do mot hinh anh co the co nhieu cac bbx cho nen ta phai xet cho tung hinh anh
+            if box[0] == current_file:
+                # append labels (bbx + class) vao trong current_labels
                 current_labels.append(box[1:])
-                if i == len(data)-1: # If this is the last line of the CSV file
-                    if random_sample: # In case we're not using the full dataset, but a random sample of it.
+                # Neu day la dong cuoi cua tep csv
+                if i == len(data)-1:
+                    # trong tuong hop chung toi khong su dung bo du lieu day du, nhung chung
+                    # toi se lay mot mau ngau nhien cua no
+                    if random_sample:
                         p = np.random.uniform(0,1)
                         if p >= (1-random_sample):
                             self.labels.append(np.stack(current_labels, axis=0))
@@ -357,8 +386,12 @@ class DataGenerator:
                         self.labels.append(np.stack(current_labels, axis=0))
                         self.filenames.append(os.path.join(self.images_dir, current_file))
                         self.image_ids.append(current_image_id)
-            else: # If this box belongs to a new image file
-                if random_sample: # In case we're not using the full dataset, but a random sample of it.
+            # Neu box nay thuoc ve mot hinh anh moi
+            else:
+
+                # Trong truong hop chung toi khong su dung bo du lieu day du, 
+                # nhung su dung cac mau ngau nhien cua no
+                if random_sample:
                     p = np.random.uniform(0,1)
                     if p >= (1-random_sample):
                         self.labels.append(np.stack(current_labels, axis=0))
@@ -368,7 +401,8 @@ class DataGenerator:
                     self.labels.append(np.stack(current_labels, axis=0))
                     self.filenames.append(os.path.join(self.images_dir, current_file))
                     self.image_ids.append(current_image_id)
-                current_labels = [] # Reset the labels list because this is a new file.
+                # Dat lai danh sach nhan vi day la tep moi
+                current_labels = []
                 current_file = box[0]
                 current_image_id = box[0].split('.')[0]
                 current_labels.append(box[1:])
@@ -394,7 +428,8 @@ class DataGenerator:
                 with Image.open(filename) as image:
                     self.images.append(np.array(image, dtype=np.uint8))
 
-        if ret: # In case we want to return these
+        # trong truong hop chung toi muon tra lai
+        if ret:
             return self.images, self.filenames, self.labels, self.image_ids
 
     def parse_xml(self,
@@ -450,7 +485,7 @@ class DataGenerator:
         self.classes = classes
         self.include_classes = include_classes
 
-        # Erase data that might have been parsed before.
+        # Xoa du lieu co the da duoc phan tich cu phap truoc
         self.filenames = []
         self.image_ids = []
         self.labels = []
@@ -670,101 +705,107 @@ class DataGenerator:
                             variable_image_size=True,
                             verbose=True):
         '''
-        Converts the currently loaded dataset into a HDF5 file. This HDF5 file contains all
-        images as uncompressed arrays in a contiguous block of memory, which allows for them
-        to be loaded faster. Such an uncompressed dataset, however, may take up considerably
-        more space on your hard drive than the sum of the source images in a compressed format
-        such as JPG or PNG.
+        Chuyen doi tap du lieu hien tai dang tai thanh tap du lieu trong dinh dang HDF5.
+        Tep HDF5 nay chua tat ca cac hinh anh duoi dang mang khong nen trong mot khoi bo 
+        nho lien ke, cho phep chung tai nhanh hon. 
+        Tuy nhien, mot bo du lieu khong nen nhu vay co the chiem nhieu dung luong dang ke
+        tren o cung cua ban so voi tong so hinh anh nguon o dinh dang nen JPG va PNG.
 
-        It is recommended that you always convert the dataset into an HDF5 dataset if you
-        have enugh hard drive space since loading from an HDF5 dataset accelerates the data
-        generation noticeably.
+        Ban nen luon luon chuyen doi tap du lieu thanh tap du lieu duoc luu trong dinh dang
+        HDF5 neu ban co du dung luong o cung. Viec tai du lieu tu trong tep HDF5 se giup
+        tang toc do dang ke trong viec load du lieu.
 
-        Note that you must load a dataset (e.g. via one of the parser methods) before creating
-        an HDF5 dataset from it.
+        Luu y la ban phai tai du lieu thong qua mot trinh phan tich cu phap truoc khi tao bo du
+        HDF5 tu du lieu tra ve cua trinh phan tich cu phap.
 
-        The created HDF5 dataset will remain open upon its creation so that it can be used right
-        away.
+        Bo du lieu HDF5 da tao se van duoc mo de co the su dung duoc ngay sau khi tao no.
 
-        Arguments:
-            file_path (str, optional): The full file path under which to store the HDF5 dataset.
-                You can load this output file via the `DataGenerator` constructor in the future.
-            resize (tuple, optional): `False` or a 2-tuple `(height, width)` that represents the
-                target size for the images. All images in the dataset will be resized to this
-                target size before they will be written to the HDF5 file. If `False`, no resizing
-                will be performed.
-            variable_image_size (bool, optional): The only purpose of this argument is that its
-                value will be stored in the HDF5 dataset in order to be able to quickly find out
-                whether the images in the dataset all have the same size or not.
-            verbose (bool, optional): Whether or not prit out the progress of the dataset creation.
+        Cac doi so:
+            file_path (str, optional): Duong dan day du de luu tru file HDF5. Ban co the load
+                tep dau ra nay thong qua contructor DataGenerator trong tuong lai
+            resize (tuple, optional): Flase hoac 2 tuple (chieu cao, chieu rong) dai dien cho
+                kich thuoc dich cua hinh anh. Tat ca hinh anh trong bo du lieu se duoc thay doi kich thuoc theo kich thuoc muc tieu nay truoc khi chung duoc ghi vao tep HDF5.
+                Neu False, khong thay doi kich thuoc se duoc thuc hien.
+            variable_image_size (bool, optional): Muc dich duy nhat cua doi so nay la gia tri cua
+                no se duoc luu tru trong bo du lieu HDF5 de co the nhanh chong tim hieu xem tat ca
+                cac hinh anh trong bo du lieu co cung kich thuoc hay khong.
+            verbose (bool, optional): Co hay khong in ra tien trinh tao du lieu
 
         Returns:
             None.
         '''
 
+        # duong dan day du luu tru file HDF5
         self.hdf5_dataset_path = file_path
 
+        # kich thuoc cua dataset ~ so luong cac sample trong dataset
         dataset_size = len(self.filenames)
 
-        # Create the HDF5 file.
+        # Tao ra file HDF5
         hdf5_dataset = h5py.File(file_path, 'w')
 
-        # Create a few attributes that tell us what this dataset contains.
-        # The dataset will obviously always contain images, but maybe it will
-        # also contain labels, image IDs, etc.
+        # Tao mot vai thuoc tinh cho chung ta biet bo du lieu nay chua nhung gi.
+        # Bo du lieu ro rang se luon chua hinh anh, nhung no cung co the chua labels, ID cua hinh
+        # anh, .. 
         hdf5_dataset.attrs.create(name='has_labels', data=False, shape=None, dtype=np.bool_)
         hdf5_dataset.attrs.create(name='has_image_ids', data=False, shape=None, dtype=np.bool_)
         hdf5_dataset.attrs.create(name='has_eval_neutral', data=False, shape=None, dtype=np.bool_)
-        # It's useful to be able to quickly check whether the images in a dataset all
-        # have the same size or not, so add a boolean attribute for that.
+        # That huu ich khi co the nhanh chong kiem tra xem tat ca cac hinh anh trong bo du lieu
+        # trong bo du lieu co cung kich thuoc hay khong, vi vay hay them thuoc tinh boolean cho
+        # dieu do.
         if variable_image_size and not resize:
             hdf5_dataset.attrs.create(name='variable_image_size', data=True, shape=None, dtype=np.bool_)
         else:
             hdf5_dataset.attrs.create(name='variable_image_size', data=False, shape=None, dtype=np.bool_)
 
-        # Create the dataset in which the images will be stored as flattened arrays.
-        # This allows us, among other things, to store images of variable size.
+        # Tao du lieu trong do cac hinh anh se duoc luu tru duoi dang cac mang phang.
+        # Dieu nay cho phep chung toi, trong so nhung thu khac, luu tru hinh anh co kich thuoc thay doi
         hdf5_images = hdf5_dataset.create_dataset(name='images',
                                                   shape=(dataset_size,),
                                                   maxshape=(None),
                                                   dtype=h5py.special_dtype(vlen=np.uint8))
 
-        # Create the dataset that will hold the image heights, widths and channels that
-        # we need in order to reconstruct the images from the flattened arrays later.
+        # Tao tap du lieu se giu chieu cao, vhieu rong va kenh ma chung ta se can de tai tao
+        # lai cac hinh anh tu mang duoc lam phang sau nay
         hdf5_image_shapes = hdf5_dataset.create_dataset(name='image_shapes',
                                                         shape=(dataset_size, 3),
                                                         maxshape=(None, 3),
                                                         dtype=np.int32)
 
+        # Neu labels khong phai la None
         if not (self.labels is None):
 
-            # Create the dataset in which the labels will be stored as flattened arrays.
+            # Tao dataset trong do labels duoc luu tru duoi dang cac mang
             hdf5_labels = hdf5_dataset.create_dataset(name='labels',
                                                       shape=(dataset_size,),
                                                       maxshape=(None),
                                                       dtype=h5py.special_dtype(vlen=np.int32))
 
-            # Create the dataset that will hold the dimensions of the labels arrays for
-            # each image so that we can restore the labels from the flattened arrays later.
+            # Tap tap du lieu se giu kich thuoc cua cac mang labels cho moi hinh anh de chung ta
+            # co the khoi phuc cac labels tu cac mang da duoc lam phang sau do
             hdf5_label_shapes = hdf5_dataset.create_dataset(name='label_shapes',
                                                             shape=(dataset_size, 2),
                                                             maxshape=(None, 2),
                                                             dtype=np.int32)
 
+            # update gia tri has_labels thanh True
             hdf5_dataset.attrs.modify(name='has_labels', value=True)
 
+        # Neu co cac Class ID
         if not (self.image_ids is None):
 
+            # Tao du lieu luu tru kich thuoc cua cac ClassID tuong ung voi dataset_size
             hdf5_image_ids = hdf5_dataset.create_dataset(name='image_ids',
                                                          shape=(dataset_size,),
                                                          maxshape=(None),
                                                          dtype=h5py.special_dtype(vlen=str))
 
+            # Update gia tri cua has_image_ids thanh True
             hdf5_dataset.attrs.modify(name='has_image_ids', value=True)
-
+        # 
         if not (self.eval_neutral is None):
 
-            # Create the dataset in which the labels will be stored as flattened arrays.
+            # Tao dataset trong do co cac labels se duoc luu tru duoi dang phang
             hdf5_eval_neutral = hdf5_dataset.create_dataset(name='eval_neutral',
                                                             shape=(dataset_size,),
                                                             maxshape=(None),
@@ -772,20 +813,22 @@ class DataGenerator:
 
             hdf5_dataset.attrs.modify(name='has_eval_neutral', value=True)
 
+        # Co hay khong in ra cac tien trinh xu ly
         if verbose:
             tr = trange(dataset_size, desc='Creating HDF5 dataset', file=sys.stdout)
         else:
             tr = range(dataset_size)
 
-        # Iterate over all images in the dataset.
+        # Lap qua tat ca cac hinh anh co trong bo du lieu
         for i in tr:
 
-            # Store the image.
+            # Luu tru hinh anh
             with Image.open(self.filenames[i]) as image:
 
+                # chuyen hinh anh ve dang array
                 image = np.asarray(image, dtype=np.uint8)
 
-                # Make sure all images end up having three channels.
+                # Hay chac chan rang hinh anh cuoi cung se co ba channels
                 if image.ndim == 2:
                     image = np.stack([image] * 3, axis=-1)
                 elif image.ndim == 3:
@@ -793,30 +836,31 @@ class DataGenerator:
                         image = np.concatenate([image] * 3, axis=-1)
                     elif image.shape[2] == 4:
                         image = image[:,:,:3]
-
+                # Neu phai dinh hinh lai hinh anh ve kich thuoc co dinh
                 if resize:
                     image = cv2.resize(image, dsize=(resize[1], resize[0]))
 
-                # Flatten the image array and write it to the images dataset.
+                # Lam phang mang hinh anh va ghi no vao bo du lieu hinh anh
                 hdf5_images[i] = image.reshape(-1)
-                # Write the image's shape to the image shapes dataset.
+                # Viet hinh dang cua hinh anh vao bo du lieu hinh dang cua hinh anh
                 hdf5_image_shapes[i] = image.shape
 
-            # Store the ground truth if we have any.
+            # Luu tru nhan cua cac bbx neu co bat ky cac labels nao do hop le
             if not (self.labels is None):
 
+                # Chuyen labels ve dang array
                 labels = np.asarray(self.labels[i])
-                # Flatten the labels array and write it to the labels dataset.
+                # Lam phang mang labels va ghi no vao tap du lieu labels
                 hdf5_labels[i] = labels.reshape(-1)
-                # Write the labels' shape to the label shapes dataset.
+                # Viet hinh dang cua labels vao tap du lieu hinh dang cua labels
                 hdf5_label_shapes[i] = labels.shape
 
-            # Store the image ID if we have one.
+            # Luu tru ID cua hinh anh neu chung ta co bat ky classID cua hinh anh nao do
             if not (self.image_ids is None):
 
                 hdf5_image_ids[i] = self.image_ids[i]
 
-            # Store the evaluation-neutrality annotations if we have any.
+            # Luu tru cac chu thich trung lap neu chung ta co bat ky thong tin gi ve no
             if not (self.eval_neutral is None):
 
                 hdf5_eval_neutral[i] = self.eval_neutral[i]
@@ -825,7 +869,8 @@ class DataGenerator:
         self.hdf5_dataset = h5py.File(file_path, 'r')
         self.hdf5_dataset_path = file_path
         self.dataset_size = len(self.hdf5_dataset['images'])
-        self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32) # Instead of shuffling the HDF5 dataset, we will shuffle this index list.
+        # Thay vi xao tron bo du lieu HDF5, chung toi se xao tron danh sach chi muc nay,
+        self.dataset_indices = np.arange(self.dataset_size, dtype=np.int32)
 
     def generate(self,
                  batch_size=32,
@@ -1215,6 +1260,6 @@ class DataGenerator:
     def get_dataset_size(self):
         '''
         Returns:
-            The number of images in the dataset.
+            So luong cac hinh anh trong bo du lieu
         '''
         return self.dataset_size

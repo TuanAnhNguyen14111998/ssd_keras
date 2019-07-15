@@ -25,10 +25,10 @@ from data_generator.object_detection_2d_image_boxes_validation_utils import Boun
 
 class DataAugmentationConstantInputSize:
     '''
-    Applies a chain of photometric and geometric image transformations. For documentation, please refer
-    to the documentation of the individual transformations involved.
+    Ap dung mot chuoi cac phep bien doi trac quang va hinh hoc tren cac hinh anh cua bo du lieu.
+    Doi voi tai lieu, vui long tham khao cac tai lieu lien quan ve cac bien doi nay.
 
-    Important: This augmentation chain is suitable for constant-size images only.
+    Quan trong: chuoi tang cuong nay chi phu hop voi hinh anh co kich thuoc khong doi.
     '''
 
     def __init__(self,
