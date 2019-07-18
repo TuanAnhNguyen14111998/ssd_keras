@@ -1,19 +1,5 @@
 '''
-The Keras-compatible loss function for the SSD model. Currently supports TensorFlow only.
-
-Copyright (C) 2018 Pierluigi Ferrari
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Loss function Keras tuong thich voi model SSD. Hien tai chi ho tro backend Tensorflow
 '''
 
 from __future__ import division
@@ -21,7 +7,7 @@ import tensorflow as tf
 
 class SSDLoss:
     '''
-    The SSD loss, see https://arxiv.org/abs/1512.02325.
+    The SSD loss, xem them trong bai bao https://arxiv.org/abs/1512.02325.
     '''
 
     def __init__(self,
@@ -29,22 +15,24 @@ class SSDLoss:
                  n_neg_min=0,
                  alpha=1.0):
         '''
-        Arguments:
-            neg_pos_ratio (int, optional): The maximum ratio of negative (i.e. background)
-                to positive ground truth boxes to include in the loss computation.
-                There are no actual background ground truth boxes of course, but `y_true`
-                contains anchor boxes labeled with the background class. Since
-                the number of background boxes in `y_true` will usually exceed
-                the number of positive boxes by far, it is necessary to balance
-                their influence on the loss. Defaults to 3 following the paper.
-            n_neg_min (int, optional): The minimum number of negative ground truth boxes to
-                enter the loss computation *per batch*. This argument can be used to make
-                sure that the model learns from a minimum number of negatives in batches
-                in which there are very few, or even none at all, positive ground truth
-                boxes. It defaults to 0 and if used, it should be set to a value that
-                stands in reasonable proportion to the batch size used for training.
-            alpha (float, optional): A factor to weight the localization loss in the
-                computation of the total loss. Defaults to 1.0 following the paper.
+        Cac doi so:
+            * neg_pos_ratio (int, optional):
+                - ty le toi da ratio cua cac doi tuong tieu cuc (background) cho cac
+                   ground truth boxes positive de dua vao ham loss. Tat nhien khong co 
+                   hop background ground truth boxes nao trong thuc te, nhung y_true chua
+                   cac anchor box duoc gan nhan voi cac class background.
+                   Vi so luong cac box cho nen trong y_true thuong se vuot qua so luong cac
+                   box positive, cho nen can phai can bang anh huong cua chung doi voi loss
+                   function. Mac dinh la 3 theo paper.
+            * n_neg_min (int, optional):
+                - so luong toi thieu cac hop ground truth boxes negative de co the cho vao
+                  loss function trong 1 batch. Dieu nay co the duoc su dung de dam bao
+                  rang model hoc duoc tu mot so luong neg toi thieu trong cac batch trong do
+                  co rat it hoac tham chi ko co gi ca so voi cac ground truth boxes positive.
+                  Mac dinh no la 0 va neu duoc su dung, no duoc dat thanh cac gia tri tuong ung
+                  voi kich thuoc batch duoc su dung cho dao tao.
+            * alpha (float, optional): Mot yeu to de can nhac loss localization trong viec 
+                  toan cua tong loss. Mac dinh la 1.0 theo paper.
         '''
         self.neg_pos_ratio = neg_pos_ratio
         self.n_neg_min = n_neg_min
@@ -52,21 +40,21 @@ class SSDLoss:
 
     def smooth_L1_loss(self, y_true, y_pred):
         '''
-        Compute smooth L1 loss, see references.
+        Tinh toan loss smooth L1, nhin vao tai lieu de biet them chi tiet
 
         Arguments:
-            y_true (nD tensor): A TensorFlow tensor of any shape containing the ground truth data.
-                In this context, the expected tensor has shape `(batch_size, #boxes, 4)` and
-                contains the ground truth bounding box coordinates, where the last dimension
-                contains `(xmin, xmax, ymin, ymax)`.
-            y_pred (nD tensor): A TensorFlow tensor of identical structure to `y_true` containing
-                the predicted data, in this context the predicted bounding box coordinates.
+            y_true (nD tensor): Mot tensorflow co kich thuoc nD chieu chua du lieu labels true.
+                trong ngu canh nay hinh dang cua no la  `(batch_size, #boxes, 4)`  va chua
+                toa do cua bbx trong do kich thuoc cuoi duoc dung theo dinh dang 
+                `(xmin, xmax, ymin, ymax)`.
+            y_pred (nD tensor): Mot tensorflow co kich thuoc giong het voi y_true chua du lieu
+                du doan. 
 
         Returns:
-            The smooth L1 loss, a nD-1 Tensorflow tensor. In this context a 2D tensor
-            of shape (batch, n_boxes_total).
+            Smooth loss L1, mot tensor nD-1 tensorflow. Trong truong hop nay, mot tensor 2D
+            co hinh dang (batch, n_boxes_total)
 
-        References:
+        Lien ket:
             https://arxiv.org/abs/1504.08083
         '''
         absolute_loss = tf.abs(y_true - y_pred)
@@ -76,75 +64,76 @@ class SSDLoss:
 
     def log_loss(self, y_true, y_pred):
         '''
-        Compute the softmax log loss.
+        Tinh toan loss sotfmax
 
-        Arguments:
-            y_true (nD tensor): A TensorFlow tensor of any shape containing the ground truth data.
-                In this context, the expected tensor has shape (batch_size, #boxes, #classes)
-                and contains the ground truth bounding box categories.
-            y_pred (nD tensor): A TensorFlow tensor of identical structure to `y_true` containing
-                the predicted data, in this context the predicted bounding box categories.
+        Cac doi so:
+            y_true (nD tensor): Mot tensorflow cua bat ky hinh dang nao co chua du lieu labels
+                true. Trong truong hop nay, tensor nay co hinh dang la(batch_size, #boxes, #classes)
+                va bao gom ground truth bounding box cho cac class
+            y_pred (nD tensor): Mot tensorflow co cau truc giong het y_true chua du lieu du doan
+                trong boi canh nay, no la cac predicted bounding box categories.
 
-        Returns:
-            The softmax log loss, a nD-1 Tensorflow tensor. In this context a 2D tensor
-            of shape (batch, n_boxes_total).
+        Tra ve:
+            Ham loss softmax, mot tensor co kich thuoc nD-1. Trong truong hop nay no la mot tensor
+            2D co kich thuoc (batch, n_boxes_total)
         '''
-        # Make sure that `y_pred` doesn't contain any zeros (which would break the log function)
+        # Hay chac chan rang y_pred khong chua bat ky so 0 nao vi no se pha vo gia tri cua logarit
         y_pred = tf.maximum(y_pred, 1e-15)
-        # Compute the log loss
+        # Tinh toan ham loss logarit cua softmax
         log_loss = -tf.reduce_sum(y_true * tf.log(y_pred), axis=-1)
         return log_loss
 
     def compute_loss(self, y_true, y_pred):
         '''
-        Compute the loss of the SSD model prediction against the ground truth.
+        Tinh toan cac loss function cua phan predict SSD model de dua gan gia tri du doan
+        den cac labels true
 
-        Arguments:
-            y_true (array): A Numpy array of shape `(batch_size, #boxes, #classes + 12)`,
-                where `#boxes` is the total number of boxes that the model predicts
-                per image. Be careful to make sure that the index of each given
-                box in `y_true` is the same as the index for the corresponding
-                box in `y_pred`. The last axis must have length `#classes + 12` and contain
-                `[classes one-hot encoded, 4 ground truth box coordinate offsets, 8 arbitrary entries]`
-                in this order, including the background class. The last eight entries of the
-                last axis are not used by this function and therefore their contents are
-                irrelevant, they only exist so that `y_true` has the same shape as `y_pred`,
-                where the last four entries of the last axis contain the anchor box
-                coordinates, which are needed during inference. Important: Boxes that
-                you want the cost function to ignore need to have a one-hot
-                class vector of all zeros.
-            y_pred (Keras tensor): The model prediction. The shape is identical
-                to that of `y_true`, i.e. `(batch_size, #boxes, #classes + 12)`.
-                The last axis must contain entries in the format
-                `[classes one-hot encoded, 4 predicted box coordinate offsets, 8 arbitrary entries]`.
+        Cac doi so:
+            y_true (array): Mot mang numpy array co hinh dang `(batch_size, #boxes, #classes + 12)`
+                trong do #boxes la tong so boxes ma model du doan tren moi hinh anh. 
+                Hay can than de dam bao rang, chi muc cua moi box da cho trong y_true giong
+                voi chi muc cua box tuong ung voi y_pred.
+                Truc cuoi cung phai co do dai #classes + 12 va chua `[classes one-hot encoded, 4 ground truth box coordinate offsets, 8 muc tuy y]`.
+                Tam muc cuoi cung cua truc cuoi cung khong duoc ham nay su dung va do do
+                noi dung cua chung khong lien quan, chung chi ton tai sao cho y_true 
+                co hinh dang giong nhu y_pred, trong do 4 muc cuoi cung cua truc chua cac toa do
+                cua cac anchor box, can thiet trong qua trinh suy luan.
+                Quan trong: cac box ma ban muon cost function bo qua can phai co mot vector
+                one-hot  class vector chua so 0.
+            y_pred (Keras tensor): Du doan cua model. Hinh dang giong het voi y_true tuc la
+                `(batch_size, #boxes, #classes + 12)`. truc cuoi cung phai chua cac muc 
+                trong dinh dang  `[classes one-hot encoded, 4 predicted box coordinate offsets, 8 muc tuy y]
+
 
         Returns:
-            A scalar, the total multitask loss for classification and localization.
+            Mot so vo huong, tong cac loss thoa man loss location va loss confidence (classification)
         '''
         self.neg_pos_ratio = tf.constant(self.neg_pos_ratio)
         self.n_neg_min = tf.constant(self.n_neg_min)
         self.alpha = tf.constant(self.alpha)
 
         batch_size = tf.shape(y_pred)[0] # Output dtype: tf.int32
-        n_boxes = tf.shape(y_pred)[1] # Output dtype: tf.int32, note that `n_boxes` in this context denotes the total number of boxes per image, not the number of boxes per cell.
+        # Output dtype: tf.int32, ghi nho rang, n_boxes trong ngu canh nay bieu thi tong so box
+        # tren moi hinh anh, khong phai so luong box tren moi cell
+        n_boxes = tf.shape(y_pred)[1]
 
-        # 1: Compute the losses for class and box predictions for every box.
+        # 1: Tinh toan loss cho class va cho moi box predictor cho moi box
 
         classification_loss = tf.to_float(self.log_loss(y_true[:,:,:-12], y_pred[:,:,:-12])) # Output shape: (batch_size, n_boxes)
         localization_loss = tf.to_float(self.smooth_L1_loss(y_true[:,:,-12:-8], y_pred[:,:,-12:-8])) # Output shape: (batch_size, n_boxes)
 
-        # 2: Compute the classification losses for the positive and negative targets.
+        # 2: Tinh toan cac loss classification cho cac muc tieu tich cuc va tieu cuc
 
-        # Create masks for the positive and negative ground truth classes.
-        negatives = y_true[:,:,0] # Tensor of shape (batch_size, n_boxes)
-        positives = tf.to_float(tf.reduce_max(y_true[:,:,1:-12], axis=-1)) # Tensor of shape (batch_size, n_boxes)
+        # Tao mat na (mask) cho cac class positive va negative trong labels
+        # Tensor co kich thuoc shape (batch_size, n_boxes)
+        negatives = y_true[:,:,0]
+        # Tensor co kich thuoc shape (batch_size, n_boxes)
+        positives = tf.to_float(tf.reduce_max(y_true[:,:,1:-12], axis=-1))
 
-        # Count the number of positive boxes (classes 1 to n) in y_true across the whole batch.
+        # Dem so luong cac positive class (lop tu 1 den m) trong y_true den toan bo batch
         n_positive = tf.reduce_sum(positives)
 
-        # Now mask all negative boxes and sum up the losses for the positive boxes PER batch item
-        # (Keras loss functions must output one scalar loss value PER batch item, rather than just
-        # one scalar for the entire batch, that's why we're not summing across all axes).
+        # Now mask all negative boxes and sum up the losses for the positive boxes PER batch item  (Keras loss functions must output one scalar loss value PER batch item, rather than just one scalar for the entire batch, that's why we're not summing across all axes).
         pos_class_loss = tf.reduce_sum(classification_loss * positives, axis=-1) # Tensor of shape (batch_size,)
 
         # Compute the classification loss for the negative default boxes (if there are any).

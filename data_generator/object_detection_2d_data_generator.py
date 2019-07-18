@@ -881,48 +881,64 @@ class DataGenerator:
                  keep_images_without_gt=False,
                  degenerate_box_handling='remove'):
         '''
-        Generates batches of samples and (optionally) corresponding labels indefinitely.
+        Tao ra cac batches cua cac samples va (tuy chon) nhan tuong ung.
 
-        Can shuffle the samples consistently after each complete pass.
+        Co the xao tron cac samples nhat quan sau moi lan vuot qua mot cach hoan chinh.
 
-        Optionally takes a list of arbitrary image transformations to apply to the
-        samples ad hoc.
+        Tuy chon lay mot danh sach cac bien doi hinh anh tuy y de ap dung cho cac mau ad hoc.
 
-        Arguments:
-            batch_size (int, optional): The size of the batches to be generated.
-            shuffle (bool, optional): Whether or not to shuffle the dataset before each pass.
-                This option should always be `True` during training, but it can be useful to turn shuffling off
-                for debugging or if you're using the generator for prediction.
-            transformations (list, optional): A list of transformations that will be applied to the images and labels
-                in the given order. Each transformation is a callable that takes as input an image (as a Numpy array)
-                and optionally labels (also as a Numpy array) and returns an image and optionally labels in the same
-                format.
-            label_encoder (callable, optional): Only relevant if labels are given. A callable that takes as input the
-                labels of a batch (as a list of Numpy arrays) and returns some structure that represents those labels.
-                The general use case for this is to convert labels from their input format to a format that a given object
-                detection model needs as its training targets.
-            returns (set, optional): A set of strings that determines what outputs the generator yields. The generator's output
-                is always a tuple that contains the outputs specified in this set and only those. If an output is not available,
-                it will be `None`. The output tuple can contain the following outputs according to the specified keyword strings:
-                * 'processed_images': An array containing the processed images. Will always be in the outputs, so it doesn't
-                    matter whether or not you include this keyword in the set.
-                * 'encoded_labels': The encoded labels tensor. Will always be in the outputs if a label encoder is given,
-                    so it doesn't matter whether or not you include this keyword in the set if you pass a label encoder.
-                * 'matched_anchors': Only available if `labels_encoder` is an `SSDInputEncoder` object. The same as 'encoded_labels',
-                    but containing anchor box coordinates for all matched anchor boxes instead of ground truth coordinates.
-                    This can be useful to visualize what anchor boxes are being matched to each ground truth box. Only available
-                    in training mode.
-                * 'processed_labels': The processed, but not yet encoded labels. This is a list that contains for each
-                    batch image a Numpy array with all ground truth boxes for that image. Only available if ground truth is available.
-                * 'filenames': A list containing the file names (full paths) of the images in the batch.
-                * 'image_ids': A list containing the integer IDs of the images in the batch. Only available if there
-                    are image IDs available.
-                * 'evaluation-neutral': A nested list of lists of booleans. Each list contains `True` or `False` for every ground truth
-                    bounding box of the respective image depending on whether that bounding box is supposed to be evaluation-neutral (`True`)
-                    or not (`False`). May return `None` if there exists no such concept for a given dataset. An example for
-                    evaluation-neutrality are the ground truth boxes annotated as "difficult" in the Pascal VOC datasets, which are
-                    usually treated to be neutral in a model evaluation.
-                * 'inverse_transform': A nested list that contains a list of "inverter" functions for each item in the batch.
+        Cac doi so:
+            * batch_size (int, optional):
+                - Kich thuoc cac batch se duoc tao ra.
+            * shuffle (bool, optional):
+                - Co hay ko xao tron du lieu moi lan pass qua. Tuy chon nay luon luon phai la
+                  True trong qua trinh dao tao. nhung cung co the huu ich de tat xao tron
+                  de go loi hoac ban dang su dung trinh du doan.
+            * transformations (list, optional):
+                - Mot danh sach cac bien doi se duoc ap dung cho cac hinh anh va nhan theo
+                  thu tu nhat dinh. Moi phep bien doi la mot lenh co the goi dau vao la mot
+                  hinh anh dang numpy va nhan cung la dang numpy va tra ve mot hinh anh nhan
+                  tuy chon co cung dinh dang.
+            * label_encoder (callable, optional):
+                - Chi lien quan den labels duoc dua ra. Mot cuoc goi lay dau vao la nhan cua mot
+                  batch (duoi dang mang numpy) va tra ve mot cau truc dai dien cho cac labels do.
+                  Truong hop su dung chung cho viec nay la chuyen tu dinh dang labels dau vao
+                  sang dinh dang ma model detect can de lam muc tieu dao tao cho no.
+            * returns (set, optional):
+                Mot tap hop cac chuoi xac dinh nhung gi dau ra ma trinh tao mang lai.
+                Dau ra cua trinh tao luon la mot tuple chua cac dau ra duoc chi dinh trong bo nay
+                va chi cac dau ra. Neu mot dau ra khong co san, no se la None, Bo du lieu dau 
+                ra co the chua cac dau ra sau theo cac chuoi tu khoa da chi dinh:
+                * 'processed_images':
+                    - Mot mang chua cac hinh anh da duoc xu ly. Se luon co cac dau ra, vi vay viec
+                      ban co bao gom tu khoa nay trong tap hop hay khong khong quan trong.
+                * 'encoded_labels':
+                    - Cac tensor duoc encode. se luon o trong dau ra neu label encoder duoc cung
+                      cap, do do viec ban co bao gom tu khoa nay trong tap hop hay khong neu ban
+                      vuot qua bo du lieu
+                * 'matched_anchors':
+                    - Chi kha dung neu labels_encoder la doi tuong trong SSDInputEncoder
+                    - Giong nhu encoded_labels, nhung chua toa do cac anchor box cho tat ca cac
+                      anchor box phu hop thay vi toa do cac ground truth.
+                    - Dieu nay co the huu ich de hinh dung nhung anchor box nay dang khop voi
+                      ground truth. Chi co san trong che do trainning.
+                * 'processed_labels':
+                    - Cac nhan duoc xu ly, nhugn chua duoc ma hoa. Day la danh sach chua cho moi
+                      hinh anh hang loat mang numpy voi tat ca cac ground truth cho hinh anh do.
+                    - Chi co san neu ground truth co san.
+                * 'filenames':
+                    - Mot danh sach chua cac ten tep (duong dan day du) cho hinh anh trong batches.
+                * 'image_ids':
+                    - Mot danh sach chua ID cac so nguyen cua cac hinh anh trong batches. Chi kha
+                      dung neu co ID hinh anh co san.
+                * 'evaluation-neutral':
+                    - Mot danh sach long nhau cua danh sach cac booleans. Moi danh sach chua cac
+                      gia tri True hoac False cho moi  ground truth bounding box cua hinh anh tuong ung tuy thuoc vao viec bbx co duoc danh gia la trung lap (true) hay None (False).
+                    - Co the tra ve None neu ko ton tai khai niem nhu vay cho mot tap du lieu da
+                      cho. Mot vi du cho tinh trung lap do la cac  ground truth bounding box duoc
+                      chu thich la kho trong bo du lieu Pascal VOC, thuong duoc coi la trung tinh
+                      trong danh gia model.
+                * 'inverse_transform':A nested list that contains a list of "inverter" functions for each item in the batch.
                     These inverter functions take (predicted) labels for an image as input and apply the inverse of the transformations
                     that were applied to the original image to them. This makes it possible to let the model make predictions on a
                     transformed image and then convert these predictions back to the original image. This is mostly relevant for
@@ -932,60 +948,82 @@ class DataGenerator:
                     original images, not with respect to the transformed images. This means you will have to transform the predicted
                     box coordinates back to the original image sizes. Note that for each image, the inverter functions for that
                     image need to be applied in the order in which they are given in the respective list for that image.
-                * 'original_images': A list containing the original images in the batch before any processing.
-                * 'original_labels': A list containing the original ground truth boxes for the images in this batch before any
-                    processing. Only available if ground truth is available.
-                The order of the outputs in the tuple is the order of the list above. If `returns` contains a keyword for an
-                output that is unavailable, that output omitted in the yielded tuples and a warning will be raised.
-            keep_images_without_gt (bool, optional): If `False`, images for which there aren't any ground truth boxes before
-                any transformations have been applied will be removed from the batch. If `True`, such images will be kept
-                in the batch.
-            degenerate_box_handling (str, optional): How to handle degenerate boxes, which are boxes that have `xmax <= xmin` and/or
-                `ymax <= ymin`. Degenerate boxes can sometimes be in the dataset, or non-degenerate boxes can become degenerate
-                after they were processed by transformations. Note that the generator checks for degenerate boxes after all
-                transformations have been applied (if any), but before the labels were passed to the `label_encoder` (if one was given).
-                Can be one of 'warn' or 'remove'. If 'warn', the generator will merely print a warning to let you know that there
-                are degenerate boxes in a batch. If 'remove', the generator will remove degenerate boxes from the batch silently.
+                * 'original_images':
+                    - Mot danh sach cac hinh anh goc trong batch truoc khi duoc xu ly.
+                * 'original_labels':
+                    - Mot danh sach chua cac ground truth boxes ban dau cho cac hinh anh trong
+                      batch nay truoc khi duoc xu ly. Chi co san neu ground truth co san.
+                    - Thu tu dau cua cac dau ra trong tuple la thu tu cua danh sach tren.
+                    - Neu returns chua mot tu khoa cho mot dau ra ko co san, dau ra do se bi bo qua
+                      trong cac bo du lieu mang lai va canh bao se duoc dua ra.
+            * keep_images_without_gt (bool, optional):
+                - Neu false cac hinh anh ko co ground truth boxes truoc khi ap dung bat ky bien
+                  doi nao se bi xoa khoi batch. Neu True, nhung hinh anh nhu vay se duoc giu lai
+                  trong batches.
+            * degenerate_box_handling (str, optional): 
+                - cach xu ly cac hop handle, cac hop co xmax <= xmin va/hoac ymax <= ymin 
+                - Các hộp thoái hóa kieu nhu the nay đôi khi có thể nằm trong bộ dữ liệu 
+                  hoặc các hộp không suy biến có thể bị thoái hóa sau khi chúng được xử lý 
+                  bằng các phép biến đổi.
+                - Lưu ý rằng trình tạo kiểm tra các hộp suy biến sau khi tất cả các 
+                  phép biến đổi đã được áp dụng (nếu có), nhưng trước khi các nhãn được 
+                  chuyển đến `label_encoder` (nếu được đưa ra).
+                - Có thể là một trong những 'cảnh báo' hoặc 'loại bỏ'. 
+                  Nếu 'cảnh báo', trình tạo sẽ chỉ in cảnh báo để cho bạn biết rằng có các 
+                  hộp thoái hóa trong một lô. Nếu 'loại bỏ', trình tạo sẽ loại bỏ các hộp 
+                  thoái hóa khỏi lô một cách im lặng.
 
         Yields:
-            The next batch as a tuple of items as defined by the `returns` argument.
+            Cac batch tiep theo duoi dang mot tuple cac items nhu duoc dinh nghia boi doi so
+            returns.
         '''
 
-        if self.dataset_size == 0:
-            raise DatasetError("Cannot generate batches because you did not load a dataset.")
+        # # Neu kich thuoc cua dataset bang khong
+        # if self.dataset_size == 0:
+        #     raise DatasetError("Khong the tao ra cac batch vi ban khong load data!")
+
+        # #############################################################################################
+        # # Canh bao neu bat ky tap hop nao tra ve la khong the
+        # #############################################################################################
+        # # neu labels la None
+        # if self.labels is None:
+        #     if any([ret in returns for ret in ['original_labels', 'processed_labels', 'encoded_labels', 'matched_anchors', 'evaluation-neutral']]):
+        #         warnings.warn("Ke tu khi khong co labels nao duoc dua ra, khong co gia tri nao trong so 'original_labels', 'processed_labels', 'evaluation-neutral', 'encoded_labels', va 'matched_anchors'" +
+        #                       "la cac gia tri hop le, nhung ban dat `returns = {}`. Khong the nao tra ve la None".format(returns))
+        # elif label_encoder is None:
+        #     if any([ret in returns for ret in ['encoded_labels', 'matched_anchors']]):
+        #         warnings.warn("Since no label encoder was given, 'encoded_labels' and 'matched_anchors' aren't possible returns, " +
+        #                       "but you set `returns = {}`. The impossible returns will be `None`.".format(returns))
+        # elif not isinstance(label_encoder, SSDInputEncoder):
+        #     if 'matched_anchors' in returns:
+        #         warnings.warn("`label_encoder` is not an `SSDInputEncoder` object, therefore 'matched_anchors' is not a possible return, " +
+        #                       "but you set `returns = {}`. The impossible returns will be `None`.".format(returns))
 
         #############################################################################################
-        # Warn if any of the set returns aren't possible.
+        # Lam mot vai dieu de chuan bi nhu co the xao tron bo du lieu ban dau
         #############################################################################################
 
-        if self.labels is None:
-            if any([ret in returns for ret in ['original_labels', 'processed_labels', 'encoded_labels', 'matched_anchors', 'evaluation-neutral']]):
-                warnings.warn("Since no labels were given, none of 'original_labels', 'processed_labels', 'evaluation-neutral', 'encoded_labels', and 'matched_anchors' " +
-                              "are possible returns, but you set `returns = {}`. The impossible returns will be `None`.".format(returns))
-        elif label_encoder is None:
-            if any([ret in returns for ret in ['encoded_labels', 'matched_anchors']]):
-                warnings.warn("Since no label encoder was given, 'encoded_labels' and 'matched_anchors' aren't possible returns, " +
-                              "but you set `returns = {}`. The impossible returns will be `None`.".format(returns))
-        elif not isinstance(label_encoder, SSDInputEncoder):
-            if 'matched_anchors' in returns:
-                warnings.warn("`label_encoder` is not an `SSDInputEncoder` object, therefore 'matched_anchors' is not a possible return, " +
-                              "but you set `returns = {}`. The impossible returns will be `None`.".format(returns))
-
-        #############################################################################################
-        # Do a few preparatory things like maybe shuffling the dataset initially.
-        #############################################################################################
-
+        # Neu duoc phep xao tron du lieu
         if shuffle:
+            # Lay cac chi so (index da duoc tao ra san cho viec xao tron du lieu)
             objects_to_shuffle = [self.dataset_indices]
+
+            # Neu co filename
             if not (self.filenames is None):
+                # them filename vao trong mang xao tron du lieu
                 objects_to_shuffle.append(self.filenames)
+            # Neu co labels
             if not (self.labels is None):
                 objects_to_shuffle.append(self.labels)
+            # Neu co image_ids
             if not (self.image_ids is None):
                 objects_to_shuffle.append(self.image_ids)
             if not (self.eval_neutral is None):
                 objects_to_shuffle.append(self.eval_neutral)
+            # Xao tron hinh anh
             shuffled_objects = sklearn.utils.shuffle(*objects_to_shuffle)
+
+            # Thuc hien chay vong lap chay qua mang objects_to_shuffle
             for i in range(len(objects_to_shuffle)):
                 objects_to_shuffle[i][:] = shuffled_objects[i]
 
@@ -995,13 +1033,14 @@ class DataGenerator:
                                    check_degenerate=True,
                                    labels_format=self.labels_format)
 
-        # Override the labels formats of all the transformations to make sure they are set correctly.
+        # Ghi de cac dinh dang labels cua tat ca cac phep bien doi de dam bao chung co 
+        # the duoc dat mot cach chinh xac
         if not (self.labels is None):
             for transform in transformations:
                 transform.labels_format = self.labels_format
 
         #############################################################################################
-        # Generate mini batches.
+        # Tao ra cac mini_batches
         #############################################################################################
 
         current = 0
@@ -1014,7 +1053,7 @@ class DataGenerator:
                 current = 0
 
             #########################################################################################
-            # Maybe shuffle the dataset if a full pass over the dataset has finished.
+            # Có thể xáo trộn tập dữ liệu nếu vượt qua toàn bộ tập dữ liệu.
             #########################################################################################
 
                 if shuffle:
@@ -1032,14 +1071,13 @@ class DataGenerator:
                         objects_to_shuffle[i][:] = shuffled_objects[i]
 
             #########################################################################################
-            # Get the images, (maybe) image IDs, (maybe) labels, etc. for this batch.
+            # Lấy hình ảnh, (có thể) ID hình ảnh, (có thể) nhãn, v.v. cho lô này.
             #########################################################################################
 
-            # We prioritize our options in the following order:
-            # 1) If we have the images already loaded in memory, get them from there.
-            # 2) Else, if we have an HDF5 dataset, get the images from there.
-            # 3) Else, if we have neither of the above, we'll have to load the individual image
-            #    files from disk.
+            # Chúng tôi ưu tiên các tùy chọn của mình theo thứ tự sau:
+            # 1) Nếu chúng ta có những hình ảnh đã được tải trong bộ nhớ, hãy lấy chúng từ đó.
+            # 2) Khác, nếu chúng ta có một bộ dữ liệu HDF5, hãy lấy hình ảnh từ đó.
+            # 3) Khác, nếu chúng ta không có những điều trên, chúng ta sẽ phải tải các tệp hình ảnh riêng lẻ từ đĩa.
             batch_indices = self.dataset_indices[current:current+batch_size]
             if not (self.images is None):
                 for i in batch_indices:
@@ -1061,7 +1099,7 @@ class DataGenerator:
                     with Image.open(filename) as image:
                         batch_X.append(np.array(image, dtype=np.uint8))
 
-            # Get the labels for this batch (if there are any).
+            # Lấy nhãn cho lô này (nếu có).
             if not (self.labels is None):
                 batch_y = deepcopy(self.labels[current:current+batch_size])
             else:
@@ -1072,38 +1110,39 @@ class DataGenerator:
             else:
                 batch_eval_neutral = None
 
-            # Get the image IDs for this batch (if there are any).
+            # Lấy ID hình ảnh cho đợt này (nếu có).
             if not (self.image_ids is None):
                 batch_image_ids = self.image_ids[current:current+batch_size]
             else:
                 batch_image_ids = None
 
             if 'original_images' in returns:
-                batch_original_images = deepcopy(batch_X) # The original, unaltered images
+                batch_original_images = deepcopy(batch_X) # Các hình ảnh gốc, không thay đổi
             if 'original_labels' in returns:
-                batch_original_labels = deepcopy(batch_y) # The original, unaltered labels
+                batch_original_labels = deepcopy(batch_y) # Các nhãn gốc, không thay đổi
 
             current += batch_size
 
             #########################################################################################
-            # Maybe perform image transformations.
+            # Có thể thực hiện chuyển đổi hình ảnh.
             #########################################################################################
 
-            batch_items_to_remove = [] # In case we need to remove any images from the batch, store their indices in this list.
+            batch_items_to_remove = [] # Trong trường hợp chúng tôi cần xóa bất kỳ hình ảnh nào khỏi lô, lưu trữ các chỉ số của chúng trong danh sách này.
             batch_inverse_transforms = []
 
             for i in range(len(batch_X)):
 
                 if not (self.labels is None):
-                    # Convert the labels for this image to an array (in case they aren't already).
+                    # Chuyen doi labels cho hinh anh nay thanh mot mang (trong truong hop chung chua co)
                     batch_y[i] = np.array(batch_y[i])
-                    # If this image has no ground truth boxes, maybe we don't want to keep it in the batch.
+                    # Neu hinh anh nay khong co ground truth boxes, co le chung ta se khong muon
+                    # giu chung trong batches
                     if (batch_y[i].size == 0) and not keep_images_without_gt:
                         batch_items_to_remove.append(i)
                         batch_inverse_transforms.append([])
                         continue
 
-                # Apply any image transformations we may have received.
+                # Ap dung bat ky bien doi hinh anh ma chung toi co da nhan duoc
                 if transformations:
 
                     inverse_transforms = []
@@ -1134,7 +1173,7 @@ class DataGenerator:
                     batch_inverse_transforms.append(inverse_transforms[::-1])
 
                 #########################################################################################
-                # Check for degenerate boxes in this batch item.
+                # Kiem tra cac vi tri toa do ma bi danh nhan sai: xmax <= xmin, ymax <= ymin
                 #########################################################################################
 
                 if not (self.labels is None):
@@ -1157,12 +1196,12 @@ class DataGenerator:
                                 batch_items_to_remove.append(i)
 
             #########################################################################################
-            # Remove any items we might not want to keep from the batch.
+            # Xoa bat ky box nao chung toi co the ko muon giu lai trong batches
             #########################################################################################
 
             if batch_items_to_remove:
                 for j in sorted(batch_items_to_remove, reverse=True):
-                    # This isn't efficient, but it hopefully shouldn't need to be done often anyway.
+                    # Dieu nay khong hieu qua, hy vong ban khong nen thuc hien thuong xuyen
                     batch_X.pop(j)
                     batch_filenames.pop(j)
                     if batch_inverse_transforms: batch_inverse_transforms.pop(j)
@@ -1174,9 +1213,9 @@ class DataGenerator:
 
             #########################################################################################
 
-            # CAUTION: Converting `batch_X` into an array will result in an empty batch if the images have varying sizes
-            #          or varying numbers of channels. At this point, all images must have the same size and the same
-            #          number of channels.
+            # THAN TRONG: Chuyen doi Batch_X thanh mot mang se dan den mot batch trong neu hinh anh
+            # co kich thuoc khac nhau hoac so luong channels khac nhau. Tai thoi diem nay, tat ca
+            # cac hinh anh phai co cung kich thuoc va so luong channels.
             batch_X = np.array(batch_X)
             if (batch_X.size == 0):
                 raise DegenerateBatchError("You produced an empty batch. This might be because the images in the batch vary " +
@@ -1185,7 +1224,7 @@ class DataGenerator:
                                            "must be homogenous in size along all axes.")
 
             #########################################################################################
-            # If we have a label encoder, encode our labels.
+            # Neu chung ta co tuy chon label_encoder thi hay thuc hien encode labels do
             #########################################################################################
 
             if not (label_encoder is None or self.labels is None):
@@ -1201,7 +1240,7 @@ class DataGenerator:
                 batch_matched_anchors = None
 
             #########################################################################################
-            # Compose the output.
+            # Soan cac ket qua dau ra
             #########################################################################################
 
             ret = []
